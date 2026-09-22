@@ -1,0 +1,70 @@
+# Requires an Ingress controller (e.g. nginx-ingress) in your cluster.
+# Update the host values to match your domain or add entries to /etc/hosts
+# for local testing:
+#   127.0.0.1  wallet.local issuer.wallet.local holder.wallet.local verifier.wallet.local
+#
+# Apply: kubectl apply -f k8s/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wallet-ingress
+  namespace: digital-wallet
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: wallet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: demo
+                port:
+                  number: 3004
+
+    - host: issuer.wallet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: issuer
+                port:
+                  number: 3001
+
+    - host: holder.wallet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: holder
+                port:
+                  number: 3002
+
+    - host: verifier.wallet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: verifier
+                port:
+                  number: 3003
+
+    - host: admin.wallet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: admin
+                port:
+                  number: 3000

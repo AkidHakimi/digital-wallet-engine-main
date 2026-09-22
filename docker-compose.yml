@@ -1,0 +1,136 @@
+services:
+
+  # ── Database ────────────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: wallet-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE:      ${DB_NAME:-digitalwallet}
+      MYSQL_USER:          ${DB_USER:-wallet_user}
+      MYSQL_PASSWORD:      ${DB_PASSWORD:-walletpass}
+    volumes:
+      - db-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "root", "--password=${DB_ROOT_PASSWORD:-rootpassword}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # ── One-time migration (runs then exits) ────────────────────────────────────
+  migrate:
+    build: .
+    command: node db/migrate.js
+    container_name: wallet-migrate
+    env_file: .env
+    environment:
+      DB_HOST:     db
+      DB_USER:     root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
+  # ── Admin service :3000 ─────────────────────────────────────────────────────
+  admin:
+    build: .
+    command: node admin/server.js
+    container_name: wallet-admin
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST:     db
+      DB_USER:     root
+      DB_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      ADMIN_PORT:  3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # ── Issuer service :3001 ────────────────────────────────────────────────────
+  issuer:
+    build: .
+    command: node issuer/server.js
+    container_name: wallet-issuer
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST:         db
+      DB_USER:         root
+      DB_PASSWORD:     ${DB_ROOT_PASSWORD:-rootpassword}
+      ISSUER_PORT:     3001
+      ISSUER_BASE_URL: http://issuer:3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # ── Holder service :3002 ────────────────────────────────────────────────────
+  holder:
+    build: .
+    command: node holder/server.js
+    container_name: wallet-holder
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST:           db
+      DB_USER:           root
+      DB_PASSWORD:       ${DB_ROOT_PASSWORD:-rootpassword}
+      HOLDER_PORT:       3002
+      HOLDER_BASE_URL:   http://holder:3002
+      ISSUER_BASE_URL:   http://issuer:3001
+      VERIFIER_BASE_URL: http://verifier:3003
+    ports:
+      - "3002:3002"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # ── Verifier service :3003 ──────────────────────────────────────────────────
+  verifier:
+    build: .
+    command: node verifier/server.js
+    container_name: wallet-verifier
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST:           db
+      DB_USER:           root
+      DB_PASSWORD:       ${DB_ROOT_PASSWORD:-rootpassword}
+      VERIFIER_PORT:     3003
+      VERIFIER_BASE_URL: http://verifier:3003
+    ports:
+      - "3003:3003"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # ── Demo UI :3004 ───────────────────────────────────────────────────────────
+  demo:
+    build: .
+    command: node demo/server.js
+    container_name: wallet-demo
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DEMO_PORT:         3004
+      ISSUER_BASE_URL:   http://localhost:3001
+      HOLDER_BASE_URL:   http://localhost:3002
+      VERIFIER_BASE_URL: http://localhost:3003
+    ports:
+      - "3004:3004"
+    depends_on:
+      - issuer
+      - holder
+      - verifier
+
+volumes:
+  db-data:

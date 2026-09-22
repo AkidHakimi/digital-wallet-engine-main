@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: issuer
+  namespace: digital-wallet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: issuer
+  template:
+    metadata:
+      labels:
+        app: issuer
+    spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - until nc -z mysql 3306; do echo "waiting for mysql…"; sleep 3; done
+      containers:
+        - name: issuer
+          image: your-registry.io/digital-wallet/app:latest
+          command: ["node", "issuer/server.js"]
+          ports:
+            - containerPort: 3001
+          envFrom:
+            - configMapRef:
+                name: wallet-config
+            - secretRef:
+                name: wallet-secrets
+          env:
+            - name: ISSUER_PORT
+              value: "3001"
+            - name: DB_USER
+              value: "root"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wallet-secrets
+                  key: DB_ROOT_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /.well-known/openid-credential-issuer
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: issuer
+  namespace: digital-wallet
+spec:
+  selector:
+    app: issuer
+  ports:
+    - port: 3001
+      targetPort: 3001

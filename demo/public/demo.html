@@ -1,0 +1,2790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Wallet — Full API Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+    /* ── Auth bar ── */
+    #auth-bar { position: sticky; top: 0; z-index: 100; background: #1a1a2e;
+                color: #f9fafb; padding: 10px 20px; display: flex;
+                align-items: center; gap: 14px; flex-wrap: wrap; }
+    #auth-bar .auth-title { font-weight: 700; font-size: .85rem; opacity: .7; white-space: nowrap; }
+    #auth-bar label { font-size: .75rem; display: flex; flex-direction: column; gap: 2px; }
+    #auth-bar input { background: #2d2d44; border: 1px solid #444; color: #f9fafb;
+                      border-radius: 5px; padding: 4px 8px; font-size: .8rem; width: 180px; }
+    #auth-bar input[type=password] { width: 220px; }
+    .btn-save { background: #4f46e5; color: #fff; border: none; border-radius: 5px;
+                padding: 6px 14px; font-size: .8rem; font-weight: 600; cursor: pointer; }
+    .btn-save:hover { background: #4338ca; }
+    #cfg-status { font-size: .75rem; opacity: .6; }
+    .btn-registry { margin-left: auto; background: transparent; border: 1px solid rgba(255,255,255,.25);
+                    color: #f9fafb; border-radius: 6px; padding: 6px 14px; font-size: .8rem;
+                    font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; }
+    .btn-registry:hover { background: rgba(255,255,255,.1); }
+
+    /* ── Setup card ── */
+    #setup-card { max-width: 1380px; margin: 16px auto 0; padding: 0 20px; }
+    .setup-inner { background: #fff; border-radius: 10px;
+                   box-shadow: 0 2px 10px rgba(0,0,0,.07);
+                   padding: 16px 20px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .setup-title { font-weight: 700; font-size: .9rem; white-space: nowrap; }
+    .setup-rows { display: flex; gap: 16px; flex: 1; flex-wrap: wrap; }
+    .setup-row { display: flex; align-items: center; gap: 8px; font-size: .82rem; }
+    .setup-row .role { font-weight: 700; min-width: 58px; }
+    .setup-dot { width: 9px; height: 9px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
+    .setup-dot.ok  { background: #22c55e; }
+    .setup-dot.err { background: #ef4444; }
+    .setup-did { font-family: monospace; font-size: .75rem; color: #6b7280; }
+    .btn-init { background: #4f46e5; color: #fff; border: none; border-radius: 7px;
+                padding: 8px 16px; font-size: .82rem; font-weight: 600; cursor: pointer;
+                white-space: nowrap; }
+    .btn-init:hover { background: #4338ca; }
+
+    /* ── Tab nav ── */
+    #tab-nav { max-width: 1380px; margin: 14px auto 0; padding: 0 20px;
+               display: flex; gap: 4px; }
+    .tab-btn { padding: 10px 22px; border: none; border-radius: 8px 8px 0 0; cursor: pointer;
+               font-weight: 600; font-size: .875rem; background: #e5e7eb; color: #6b7280;
+               transition: background .12s; }
+    .tab-btn:hover  { background: #d1d5db; }
+    .tab-btn.active { background: #fff; color: #1a1a2e; box-shadow: 0 -2px 8px rgba(0,0,0,.06); }
+    .tab-btn.t-issuer.active   { color: #4f46e5; }
+    .tab-btn.t-holder.active   { color: #0891b2; }
+    .tab-btn.t-verifier.active { color: #059669; }
+    .tab-btn.t-flows.active    { color: #d97706; }
+    .tab-btn.t-registry.active { color: #7c3aed; }
+    .api-delete { background: #fce7f3; color: #9d174d; }
+
+    /* ── Tab panels ── */
+    .tab-panel { display: none; max-width: 1380px; margin: 0 auto; padding: 0 20px 40px; }
+    .tab-panel.active { display: block; }
+    .tab-content { background: #fff; border-radius: 0 10px 10px 10px;
+                   box-shadow: 0 2px 10px rgba(0,0,0,.07); padding: 24px; }
+
+    /* ── Section card ── */
+    .sc { border: 1px solid #e5e7eb; border-radius: 9px; padding: 18px 20px; margin-bottom: 20px; }
+    .sc-title { font-size: .95rem; font-weight: 700; margin-bottom: 3px; }
+    .sc-sub   { font-size: .78rem; color: #6b7280; margin-bottom: 14px; }
+    .sc-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 860px) { .sc-grid { grid-template-columns: 1fr; } }
+
+    /* ── Form ── */
+    .form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+    .fg { display: flex; flex-direction: column; gap: 3px; }
+    .fg label { font-size: .74rem; font-weight: 600; color: #374151; }
+    .fg input, .fg select, .fg textarea {
+      border: 1.5px solid #e5e7eb; border-radius: 6px; padding: 7px 10px;
+      font-size: .84rem; font-family: inherit; min-width: 140px; }
+    .fg input:focus, .fg select:focus, .fg textarea:focus
+      { border-color: #4f46e5; outline: none; }
+    .fg textarea { resize: vertical; min-height: 72px; }
+    .fg-wide input, .fg-wide select { min-width: 260px; }
+    .fg-full { width: 100%; }
+    .fg-full input, .fg-full textarea { width: 100%; min-width: unset; }
+
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: 6px; border: none; border-radius: 7px;
+           padding: 8px 16px; font-size: .84rem; font-weight: 600; cursor: pointer;
+           transition: background .12s, opacity .12s; }
+    .btn:disabled { opacity: .42; cursor: not-allowed; }
+    .btn-i  { background: #4f46e5; color: #fff; }
+    .btn-i:hover:not(:disabled) { background: #4338ca; }
+    .btn-h  { background: #0891b2; color: #fff; }
+    .btn-h:hover:not(:disabled) { background: #0e7490; }
+    .btn-v  { background: #059669; color: #fff; }
+    .btn-v:hover:not(:disabled) { background: #047857; }
+    .btn-f  { background: #d97706; color: #fff; }
+    .btn-f:hover:not(:disabled) { background: #b45309; }
+    .btn-sm { padding: 5px 11px; font-size: .78rem; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+
+    /* ── Status / log ── */
+    .sb { border-radius: 7px; padding: 9px 13px; font-size: .82rem; font-weight: 500;
+          margin: 8px 0; min-height: 36px; line-height: 1.45; }
+    .sb-idle    { background: #f3f4f6; color: #6b7280; }
+    .sb-info    { background: #eff6ff; color: #1d4ed8; }
+    .sb-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .sb-error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .sb-warn    { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    .alog { font-family: monospace; font-size: .72rem; background: #f9fafb; border-radius: 6px;
+            padding: 7px 11px; max-height: 90px; overflow-y: auto; margin-top: 6px; }
+    .alog .lok { color: #16a34a; } .alog .lerr { color: #dc2626; } .alog .linf { color: #2563eb; }
+
+    /* ── Result / QR / table ── */
+    .rt { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: 10px; }
+    .rt td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+    .rt td:first-child { font-weight: 600; color: #374151; width: 34%; white-space: nowrap; }
+    .rt td:last-child  { word-break: break-all; }
+    pre.jb { background: #1e1e2e; color: #cdd6f4; border-radius: 8px; padding: 12px;
+             font-size: .72rem; overflow: auto; max-height: 180px;
+             white-space: pre-wrap; margin-top: 8px; }
+    .qr-wrap { display: flex; flex-direction: column; align-items: center; margin: 10px 0; }
+    .qr-wrap svg { max-width: 210px; border: 1px solid #e5e7eb; border-radius: 8px;
+                   padding: 6px; background: #fff; }
+    .qr-lbl { font-size: .7rem; color: #9ca3af; margin-top: 5px; }
+
+    /* ── Badges ── */
+    .badge { border-radius: 4px; padding: 2px 7px; font-size: .73rem; font-weight: 600; }
+    .bdg-green  { background: #d1fae5; color: #065f46; }
+    .bdg-gray   { background: #f3f4f6; color: #9ca3af; }
+    .bdg-indigo { background: #ede9fe; color: #4f46e5; }
+    .bdg-teal   { background: #cffafe; color: #0e7490; }
+
+    /* ── SD-JWT field selector ── */
+    .fsel { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px;
+            padding: 11px 13px; margin-bottom: 12px; }
+    .fsel-title { font-size: .78rem; font-weight: 700; color: #0369a1; margin-bottom: 8px; }
+    .fsel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    @media (max-width: 600px) { .fsel-grid { grid-template-columns: 1fr; } }
+    .fck { display: flex; align-items: center; gap: 6px; background: #fff;
+           border: 1.5px solid #e0f2fe; border-radius: 5px; padding: 6px 10px;
+           cursor: pointer; font-size: .81rem; user-select: none; }
+    .fck.on { background: #e0f2fe; border-color: #0891b2; font-weight: 600; }
+    .fck input { cursor: pointer; accent-color: #0891b2; }
+
+    /* ── Credential picker ── */
+    .cred-picker { min-width: 280px; }
+
+    /* ── Flow steps ── */
+    .flow-steps { border-left: 3px solid #e5e7eb; padding-left: 16px; margin-bottom: 16px; }
+    .flow-step  { font-size: .8rem; color: #6b7280; padding: 3px 0; line-height: 1.5; }
+    .flow-step strong { color: #1a1a2e; }
+
+    /* ── API inspector ── */
+    .api-pane { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin-top: 12px; font-size: .78rem; }
+    .api-req { background: #f8fafc; border-bottom: 1px solid #e5e7eb; padding: 9px 13px; }
+    .api-res { background: #fff; padding: 9px 13px; }
+    .api-label { font-size: .67rem; font-weight: 700; color: #9ca3af; letter-spacing: .07em;
+                 text-transform: uppercase; margin-bottom: 5px; }
+    .api-meth { display: inline-block; font-size: .7rem; font-weight: 700; border-radius: 4px;
+                padding: 1px 7px; margin-right: 7px; }
+    .api-get  { background: #dbeafe; color: #1d4ed8; }
+    .api-post { background: #dcfce7; color: #15803d; }
+    .api-url  { font-family: monospace; font-size: .76rem; color: #374151; word-break: break-all; }
+    .api-st { display: inline-block; font-size: .7rem; font-weight: 700; border-radius: 4px;
+              padding: 1px 7px; margin-right: 7px; }
+    .api-ok  { background: #dcfce7; color: #15803d; }
+    .api-err { background: #fee2e2; color: #dc2626; }
+    .api-body { font-family: monospace; font-size: .73rem; white-space: pre-wrap; word-break: break-all;
+                margin-top: 7px; color: #1e293b; background: #f1f5f9; border-radius: 5px;
+                padding: 7px 10px; max-height: 220px; overflow-y: auto; }
+    .api-wait { color: #9ca3af; font-style: italic; }
+    .api-step { border-top: 1px dashed #e5e7eb; }
+    .api-step:first-child { border-top: none; }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1px solid #f0f0f0; margin: 16px 0; }
+  </style>
+</head>
+<body>
+
+<!-- ══ Auth bar ══════════════════════════════════════════════════════════ -->
+<header id="auth-bar">
+  <span class="auth-title">Auth Config</span>
+  <label>Client ID<input id="cfg-client-id" type="text" placeholder="default-client"></label>
+  <label>API Key<input id="cfg-api-key" type="password" placeholder="loading..."></label>
+  <button class="btn-save" onclick="saveConfig()">Save</button>
+  <span id="cfg-status">Loading…</span>
+  <a id="btn-registry-link" class="btn-registry" href="http://localhost:3005" target="_blank">Trust Registry</a>
+</header>
+
+<!-- ══ Setup card ════════════════════════════════════════════════════════ -->
+<div id="setup-card">
+  <div class="setup-inner">
+    <span class="setup-title">Service Setup</span>
+    <div class="setup-rows">
+      <div class="setup-row">
+        <span class="role" style="color:#4f46e5">Issuer</span>
+        <span class="setup-dot" id="dot-issuer"></span>
+        <span class="setup-did" id="did-issuer">checking…</span>
+      </div>
+      <div class="setup-row">
+        <span class="role" style="color:#0891b2">Holder</span>
+        <span class="setup-dot" id="dot-holder"></span>
+        <span class="setup-did" id="did-holder">checking…</span>
+      </div>
+      <div class="setup-row">
+        <span class="role" style="color:#059669">Verifier</span>
+        <span class="setup-dot" id="dot-verifier"></span>
+        <span class="setup-did" id="did-verifier">checking…</span>
+      </div>
+    </div>
+    <button class="btn-init" onclick="initializeAll()">Initialize All</button>
+  </div>
+</div>
+
+<!-- ══ Tab nav ═══════════════════════════════════════════════════════════ -->
+<nav id="tab-nav">
+  <button class="tab-btn t-issuer active"   data-tab="issuer">Issuer :3001</button>
+  <button class="tab-btn t-holder"          data-tab="holder">Holder :3002</button>
+  <button class="tab-btn t-verifier"        data-tab="verifier">Verifier :3003</button>
+  <button class="tab-btn t-registry"        data-tab="registry">Registry :3005</button>
+  <button class="tab-btn t-flows"           data-tab="flows">Flows</button>
+</nav>
+
+<!-- ══ ISSUER tab ════════════════════════════════════════════════════════ -->
+<div id="tab-issuer" class="tab-panel active">
+ <div class="tab-content">
+
+  <!-- Identity -->
+  <div class="sc">
+    <div class="sc-title">Identity</div>
+    <div class="sc-sub">GET /dids · POST /create</div>
+    <div class="form-row">
+      <div class="fg"><label>Name</label><input id="i-did-name" value="Issuer Default"></div>
+      <div class="fg"><label>Method</label>
+        <select id="i-did-method" onchange="toggleDomainField('i')"><option value="did:key">did:key</option><option value="did:web">did:web</option></select>
+      </div>
+      <div class="fg" id="i-did-domain-wrap" style="display:none"><label>Domain</label><input id="i-did-domain" placeholder="issuer.example.org"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-i" onclick="listIssuerDids()">List DIDs</button>
+      <button class="btn btn-i" onclick="createIssuerDid()">Create DID</button>
+    </div>
+    <div id="i-dids-status" class="sb sb-idle">Ready.</div>
+    <div id="i-dids-log" class="alog" style="display:none"></div>
+    <div id="i-dids-result"></div>
+    <div id="i-dids-api" class="api-pane" style="display:none"></div>
+  </div>
+
+  <!-- Issue Credential -->
+  <div class="sc">
+    <div class="sc-title">Issue Credential</div>
+    <div class="sc-sub">POST /issue — VC-LD or SD-JWT Employee Badge</div>
+    <div class="form-row">
+      <div class="fg fg-wide"><label>Issuer DID</label>
+        <select class="issuer-did-picker" id="i-issue-issuer-id">
+          <option value="">— default issuer —</option>
+        </select>
+      </div>
+      <div class="fg fg-wide"><label>Holder DID</label>
+        <select class="holder-did-picker" id="i-issue-holder">
+          <option value="">— select holder DID —</option>
+        </select>
+      </div>
+      <div class="fg"><label>Format</label>
+        <select id="i-issue-format" onchange="toggleIssueFields()">
+          <option value="vc-ld">VC-LD</option><option value="sd-jwt">SD-JWT</option>
+        </select>
+      </div>
+      <div class="fg"><label>Credential Type</label><input id="i-issue-cred-type" placeholder="auto from schema"></div>
+    </div>
+    <div class="form-row" style="margin-bottom:4px">
+      <div class="fg fg-wide"><label>Schema Slug</label><input id="i-issue-schema" placeholder="employee-badge"></div>
+      <div class="fg"><label>Version</label><input id="i-issue-schema-ver" placeholder="1.0.0"></div>
+      <div class="fg" style="align-self:flex-end"><button class="btn btn-i btn-sm" onclick="retrieveSchemaFields()">Retrieve</button></div>
+    </div>
+    <div class="form-row" style="margin-bottom:4px">
+      <div class="fg"><label>Expires In (days)</label><input id="i-issue-expires-days" type="number" min="0" step="any" placeholder="365"></div>
+      <div class="fg"><label>Expiration Date</label><input id="i-issue-expiry-date" type="datetime-local"></div>
+    </div>
+    <div id="i-issue-schema-msg" class="sb sb-idle" style="display:none;margin-bottom:8px"></div>
+    <div class="sc-grid" id="i-issue-fields-grid" style="display:none"></div>
+    <div id="i-issue-sdfields" class="fsel" style="display:none">
+      <div class="fsel-title">Selectively Disclosable Claims:</div>
+      <div class="fsel-grid" id="i-issue-sdgrid"></div>
+    </div>
+    <div class="btn-row" id="i-issue-btn-row" style="display:none"><button class="btn btn-i" onclick="issueCredential()">Issue Credential</button></div>
+    <div id="i-issue-status" class="sb sb-idle">Ready.</div>
+    <div id="i-issue-log" class="alog" style="display:none"></div>
+    <div id="i-issue-result"></div>
+    <div id="i-issue-api" class="api-pane" style="display:none"></div>
+  </div>
+
+  <div class="sc-grid">
+
+    <!-- Revoke -->
+    <div class="sc">
+      <div class="sc-title">Revoke Credential</div>
+      <div class="sc-sub">POST /credentials/revoke</div>
+      <div class="fg fg-full" style="margin-bottom:12px">
+        <label>Credential ID</label><input id="i-revoke-id" placeholder="http://localhost:3001/credentials/…">
+      </div>
+      <div class="btn-row"><button class="btn btn-i btn-sm" onclick="revokeCredential()">Revoke</button></div>
+      <div id="i-revoke-status" class="sb sb-idle">Ready.</div>
+      <div id="i-revoke-log" class="alog" style="display:none"></div>
+      <div id="i-revoke-api" class="api-pane" style="display:none"></div>
+    </div>
+
+    <!-- Keys -->
+    <div class="sc">
+      <div class="sc-title">Key Management</div>
+      <div class="sc-sub">GET /keys · POST /keys/rotate · POST /keys/revoke · GET /keys/audit</div>
+      <div class="form-row">
+        <div class="fg"><label>Purpose</label>
+          <select id="i-key-purpose">
+            <option>assertionMethod</option><option>authentication</option>
+            <option>capabilityDelegation</option><option>capabilityInvocation</option>
+          </select>
+        </div>
+        <div class="fg"><label>Key ID (revoke)</label><input id="i-key-id-revoke" placeholder="did:key:…#…"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-i btn-sm" onclick="listIssuerKeys()">List Keys</button>
+        <button class="btn btn-i btn-sm" onclick="rotateIssuerKey()">Rotate</button>
+        <button class="btn btn-i btn-sm" onclick="revokeIssuerKey()">Revoke Key</button>
+        <button class="btn btn-i btn-sm" onclick="getIssuerAuditLog()">Audit Log</button>
+      </div>
+      <div id="i-keys-status" class="sb sb-idle">Ready.</div>
+      <div id="i-keys-log" class="alog" style="display:none"></div>
+      <div id="i-keys-result"></div>
+      <div id="i-keys-api" class="api-pane" style="display:none"></div>
+    </div>
+
+  </div><!-- /sc-grid -->
+
+  <!-- Schemas -->
+  <div class="sc">
+    <div class="sc-title">Schema Registry</div>
+    <div class="sc-sub">GET /schemas · GET /schemas/:slug · POST /schemas</div>
+    <div class="sc-grid">
+      <div>
+        <div class="form-row">
+          <div class="fg"><label>Slug</label><input id="i-schema-slug" placeholder="employee-badge"></div>
+          <div class="fg"><label>Version</label><input id="i-schema-ver" value="1.0.0"></div>
+        </div>
+        <div class="fg fg-full" style="margin-bottom:10px">
+          <label>Schema JSON</label>
+          <textarea id="i-schema-json" rows="5" placeholder='{"type":"object","properties":{"name":{"type":"string"}}}'></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-i btn-sm" onclick="listSchemas()">List</button>
+          <button class="btn btn-i btn-sm" onclick="getSchema()">Get by Slug</button>
+          <button class="btn btn-i btn-sm" onclick="registerSchema()">Register</button>
+        </div>
+      </div>
+      <div>
+        <div id="i-schema-status" class="sb sb-idle">Ready.</div>
+        <div id="i-schema-log" class="alog" style="display:none"></div>
+        <div id="i-schema-result"></div>
+        <div id="i-schema-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OID4VCI -->
+  <div class="sc">
+    <div class="sc-title">OID4VCI — Credential Offer</div>
+    <div class="sc-sub">GET /.well-known/openid-credential-issuer · POST /oid4vci/offer</div>
+    <div class="sc-grid">
+      <div>
+        <div class="form-row" style="margin-bottom:4px">
+          <div class="fg fg-wide"><label>Issuer DID</label>
+            <select class="issuer-did-picker" id="i-oid4vci-issuer-id">
+              <option value="">— default issuer —</option>
+            </select>
+          </div>
+          <div class="fg"><label>Format</label>
+            <select id="i-oid4vci-format" onchange="toggleOid4vciFields()">
+              <option value="vc-ld">VC-LD</option>
+              <option value="sd-jwt">SD-JWT</option>
+            </select>
+          </div>
+          <div class="fg fg-wide"><label>Schema Slug</label><input id="i-oid4vci-schema" placeholder="employee-badge"></div>
+          <div class="fg"><label>Version</label><input id="i-oid4vci-schema-ver" placeholder="1.0.0"></div>
+          <div class="fg"><label>Credential Type</label><input id="i-oid4vci-cred-type" placeholder="auto from schema"></div>
+          <div class="fg"><label>Offer TTL (min)</label><input id="i-oid4vci-ttl" type="number" min="1" placeholder="10"></div>
+          <div class="fg" style="align-self:flex-end"><button class="btn btn-i btn-sm" onclick="retrieveOid4vciSchemaFields()">Retrieve</button></div>
+        </div>
+        <div class="form-row" style="margin-bottom:4px">
+          <div class="fg"><label>Expires In (days)</label><input id="i-oid4vci-expires-days" type="number" min="0" step="any" placeholder="365"></div>
+          <div class="fg"><label>Expiration Date</label><input id="i-oid4vci-expiry-date" type="datetime-local"></div>
+        </div>
+        <div id="i-oid4vci-schema-msg" class="sb sb-idle" style="display:none;margin-bottom:8px"></div>
+        <div class="sc-grid" id="i-oid4vci-fields-grid" style="gap:8px; margin-bottom:10px; display:none"></div>
+        <div id="i-oid4vci-sdfields" class="fsel" style="display:none">
+          <div class="fsel-title">Selectively Disclosable Claims:</div>
+          <div class="fsel-grid" id="i-oid4vci-sdgrid"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-i btn-sm" onclick="getOid4vciMetadata()">Metadata</button>
+          <button class="btn btn-i btn-sm" id="i-oid4vci-offer-btn" style="display:none" onclick="createOid4vciOffer()">Create Offer</button>
+        </div>
+      </div>
+      <div>
+        <div id="i-oid4vci-status" class="sb sb-idle">Ready.</div>
+        <div id="i-oid4vci-log" class="alog" style="display:none"></div>
+        <div id="i-oid4vci-qr" class="qr-wrap" style="display:none"></div>
+        <div id="i-oid4vci-result"></div>
+        <div id="i-oid4vci-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+ </div><!-- /tab-content -->
+</div><!-- /tab-issuer -->
+
+<!-- ══ HOLDER tab ════════════════════════════════════════════════════════ -->
+<div id="tab-holder" class="tab-panel">
+ <div class="tab-content">
+
+  <!-- Identity -->
+  <div class="sc">
+    <div class="sc-title">Identity</div>
+    <div class="sc-sub">GET /dids · POST /create</div>
+    <div class="form-row">
+      <div class="fg"><label>Name</label><input id="h-did-name" value="Holder Default"></div>
+      <div class="fg"><label>Method</label>
+        <select id="h-did-method" onchange="toggleDomainField('h')"><option value="did:key">did:key</option><option value="did:web">did:web</option></select>
+      </div>
+      <div class="fg" id="h-did-domain-wrap" style="display:none"><label>Domain</label><input id="h-did-domain" placeholder="holder.example.org"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-h" onclick="listHolderDids()">List DIDs</button>
+      <button class="btn btn-h" onclick="createHolderDid()">Create DID</button>
+    </div>
+    <div id="h-dids-status" class="sb sb-idle">Ready.</div>
+    <div id="h-dids-log" class="alog" style="display:none"></div>
+    <div id="h-dids-result"></div>
+    <div id="h-dids-api" class="api-pane" style="display:none"></div>
+  </div>
+
+  <!-- Wallet -->
+  <div class="sc">
+    <div class="sc-title">Wallet — Credentials</div>
+    <div class="sc-sub">GET /credentials · POST /credentials</div>
+    <div class="sc-grid">
+      <div>
+        <div class="form-row">
+          <div class="fg"><label>Format</label>
+            <select id="h-store-format" onchange="toggleWalletStoreFields()">
+              <option value="">— select format —</option>
+              <option value="vc-ld">VC-LD</option>
+              <option value="sd-jwt">SD-JWT</option>
+            </select>
+          </div>
+        </div>
+        <div id="h-store-vcld-wrap" style="display:none">
+          <div class="fg fg-full" style="margin-bottom:8px">
+            <label>Verifiable Credential JSON</label>
+            <textarea id="h-store-vc" rows="5" placeholder='{"@context":…}'></textarea>
+          </div>
+        </div>
+        <div id="h-store-sdjwt-wrap" style="display:none">
+          <div class="fg fg-full" style="margin-bottom:10px">
+            <label>SD-JWT string</label>
+            <textarea id="h-store-sdjwt" rows="3" placeholder="eyJ…~disc1~disc2~"></textarea>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-h btn-sm" onclick="listHolderCredentials()">List Credentials</button>
+          <button class="btn btn-h btn-sm" id="h-store-btn" style="display:none" onclick="storeCredential()">Store</button>
+        </div>
+      </div>
+      <div>
+        <div id="h-wallet-status" class="sb sb-idle">Ready.</div>
+        <div id="h-wallet-log" class="alog" style="display:none"></div>
+        <div id="h-wallet-result"></div>
+        <div id="h-wallet-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Get Credential by ID -->
+  <div class="sc">
+    <div class="sc-title">Get Credential</div>
+    <div class="sc-sub">GET /credentials/:id — retrieve a specific stored credential</div>
+    <div class="sc-grid">
+      <div>
+        <div class="form-row">
+          <div class="fg"><label>Credential</label>
+            <select class="cred-picker" id="h-get-cred">
+              <option value="">— select credential —</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-h btn-sm" onclick="getHolderCredential()">Get Credential</button>
+        </div>
+      </div>
+      <div>
+        <div id="h-get-cred-status" class="sb sb-idle">Ready.</div>
+        <div id="h-get-cred-log" class="alog" style="display:none"></div>
+        <div id="h-get-cred-result"></div>
+        <div id="h-get-cred-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Present -->
+  <div class="sc">
+    <div class="sc-title">Create Presentation</div>
+    <div class="sc-sub">POST /present — sign a VP from a stored credential + challenge</div>
+    <div class="sc-grid">
+      <div>
+        <div class="form-row">
+          <div class="fg"><label>Credential</label>
+            <select class="cred-picker" id="h-present-cred" onchange="onPresentCredChange()">
+              <option value="">— select —</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="fg fg-wide"><label>Challenge</label><input id="h-present-challenge" placeholder="uuid nonce"></div>
+          <div class="fg"><label>Domain</label><input id="h-present-domain" value="verifier.example.org"></div>
+        </div>
+        <div id="h-present-sdfields" class="fsel" style="display:none">
+          <div class="fsel-title">Fields to disclose:</div>
+          <div class="fsel-grid" id="h-present-sdgrid"></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-h" onclick="createPresentation()">Create Presentation</button></div>
+      </div>
+      <div>
+        <div id="h-present-status" class="sb sb-idle">Ready.</div>
+        <div id="h-present-log" class="alog" style="display:none"></div>
+        <div id="h-present-result"></div>
+        <div id="h-present-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sc-grid">
+
+    <!-- Key Management -->
+    <div class="sc">
+      <div class="sc-title">Key Management</div>
+      <div class="sc-sub">GET /keys · POST /keys/rotate</div>
+      <div class="fg" style="margin-bottom:10px"><label>Purpose</label>
+        <select id="h-key-purpose">
+          <option>assertionMethod</option><option>authentication</option>
+          <option>capabilityDelegation</option><option>capabilityInvocation</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-h btn-sm" onclick="listHolderKeys()">List Keys</button>
+        <button class="btn btn-h btn-sm" onclick="rotateHolderKey()">Rotate Key</button>
+      </div>
+      <div id="h-keys-status" class="sb sb-idle">Ready.</div>
+      <div id="h-keys-log" class="alog" style="display:none"></div>
+      <div id="h-keys-result"></div>
+      <div id="h-keys-api" class="api-pane" style="display:none"></div>
+    </div>
+
+    <!-- OID4VCI Receive -->
+    <div class="sc">
+      <div class="sc-title">OID4VCI — Receive Credential</div>
+      <div class="sc-sub">POST /oid4vci/receive</div>
+      <div class="fg fg-full" style="margin-bottom:8px">
+        <label>Offer URI</label>
+        <input id="h-oid4vci-uri" placeholder="openid-credential-offer://…">
+      </div>
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="fg"><label>Format</label>
+          <select id="h-oid4vci-format">
+            <option value="vc-ld">VC-LD</option>
+            <option value="sd-jwt">SD-JWT</option>
+          </select>
+        </div>
+        <div class="fg fg-wide"><label>Bind to DID</label>
+          <select class="holder-did-picker" id="h-oid4vci-did">
+            <option value="">— default holder DID —</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row"><button class="btn btn-h btn-sm" onclick="receiveViaOid4vci()">Receive</button></div>
+      <div id="h-oid4vci-status" class="sb sb-idle">Ready.</div>
+      <div id="h-oid4vci-log" class="alog" style="display:none"></div>
+      <div id="h-oid4vci-result"></div>
+      <div id="h-oid4vci-api" class="api-pane" style="display:none"></div>
+    </div>
+
+  </div><!-- /sc-grid -->
+
+  <!-- OID4VP Initiate -->
+  <div class="sc">
+    <div class="sc-title">OID4VP — Initiate Presentation</div>
+    <div class="sc-sub">POST /oid4vp/initiate · POST /oid4vp/initiate-sdjwt</div>
+    <div class="sc-grid">
+      <div>
+        <!-- Step 1: paste request URI and fetch constraints -->
+        <div class="fg fg-full" style="margin-bottom:10px">
+          <label>Request URI (openid4vp://… or https://…)</label>
+          <div style="display:flex; gap:6px; align-items:center; margin-top:3px">
+            <input id="h-oid4vp-uri" placeholder="openid4vp://…" style="flex:1">
+            <button class="btn btn-h btn-sm" onclick="fetchOid4vpConstraints()">Fetch Constraints</button>
+          </div>
+        </div>
+
+        <!-- Constraints panel: shown after fetch -->
+        <div id="h-oid4vp-pd-panel" style="display:none; margin-bottom:12px">
+          <div class="fsel" style="background:#f0fdf4; border-color:#bbf7d0; margin-bottom:0">
+            <div class="fsel-title" style="color:#166534">Presentation Definition (from verifier):</div>
+            <div id="h-oid4vp-pd-content"></div>
+          </div>
+        </div>
+
+        <!-- Step 2: credential picker (auto-selected by matcher, can override) -->
+        <div class="form-row">
+          <div class="fg fg-wide"><label>Credential</label>
+            <select class="cred-picker" id="h-oid4vp-cred" onchange="onOid4vpCredChange()">
+              <option value="">— auto-matched or select —</option>
+            </select>
+          </div>
+          <div class="fg"><label>Mode</label>
+            <select id="h-oid4vp-mode" disabled>
+              <option value="vc-ld">VC-LD</option><option value="sd-jwt">SD-JWT</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="h-oid4vp-sdfields" class="fsel" style="display:none">
+          <div class="fsel-title">Fields to disclose:</div>
+          <div class="fsel-grid" id="h-oid4vp-sdgrid"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-h" onclick="initiateOid4vp()">Initiate Presentation</button>
+        </div>
+      </div>
+      <div>
+        <div id="h-oid4vp-status" class="sb sb-idle">Ready.</div>
+        <div id="h-oid4vp-log" class="alog" style="display:none"></div>
+        <div id="h-oid4vp-result"></div>
+        <div id="h-oid4vp-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+ </div>
+</div><!-- /tab-holder -->
+
+<!-- ══ VERIFIER tab ══════════════════════════════════════════════════════ -->
+<div id="tab-verifier" class="tab-panel">
+ <div class="tab-content">
+
+  <!-- Identity -->
+  <div class="sc">
+    <div class="sc-title">Identity</div>
+    <div class="sc-sub">GET /dids · POST /create</div>
+    <div class="form-row">
+      <div class="fg"><label>Name</label><input id="v-did-name" value="Verifier Default"></div>
+      <div class="fg"><label>Method</label>
+        <select id="v-did-method" onchange="toggleDomainField('v')"><option value="did:key">did:key</option><option value="did:web">did:web</option></select>
+      </div>
+      <div class="fg" id="v-did-domain-wrap" style="display:none"><label>Domain</label><input id="v-did-domain" placeholder="verifier.example.org"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-v" onclick="listVerifierDids()">List DIDs</button>
+      <button class="btn btn-v" onclick="createVerifierDid()">Create DID</button>
+    </div>
+    <div id="v-dids-status" class="sb sb-idle">Ready.</div>
+    <div id="v-dids-log" class="alog" style="display:none"></div>
+    <div id="v-dids-result"></div>
+    <div id="v-dids-api" class="api-pane" style="display:none"></div>
+  </div>
+
+  <div class="sc-grid">
+
+    <!-- Challenge -->
+    <div class="sc">
+      <div class="sc-title">Issue Challenge</div>
+      <div class="sc-sub">POST /challenge — one-time nonce for W3C VP verification</div>
+      <div class="btn-row"><button class="btn btn-v" onclick="issueChallenge()">Issue Challenge</button></div>
+      <div id="v-challenge-status" class="sb sb-idle">Ready.</div>
+      <div id="v-challenge-log" class="alog" style="display:none"></div>
+      <div id="v-challenge-result"></div>
+      <div id="v-challenge-api" class="api-pane" style="display:none"></div>
+    </div>
+
+    <!-- OID4VP Request -->
+    <div class="sc">
+      <div class="sc-title">OID4VP — Create Request</div>
+      <div class="sc-sub">GET /.well-known/openid-configuration · POST /oid4vp/request · GET /oid4vp/result/:state</div>
+      <div class="form-row" style="margin-bottom:6px">
+        <div class="fg"><label>Credential Type</label><input id="v-oid4vp-cred-type" placeholder="EmployeeBadgeCredential"></div>
+        <div class="fg fg-wide"><label>Issuer DID</label>
+          <select class="issuer-did-picker" id="v-oid4vp-issuer-did">
+            <option value="">— any issuer —</option>
+          </select>
+        </div>
+        <div class="fg"><label>Format</label>
+          <select id="v-oid4vp-format">
+            <option value="">— any —</option>
+            <option value="ldp_vc">ldp_vc (VC-LD)</option>
+            <option value="vc+sd-jwt">vc+sd-jwt (SD-JWT)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="fg fg-wide"><label>Required Claims (comma-separated)</label><input id="v-oid4vp-req-claims" placeholder="name, department, position"></div>
+        <div class="fg fg-wide"><label>Schema URL (optional)</label><input id="v-oid4vp-schema-url" placeholder="https://…/schemas/…"></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>State (for poll)</label><input id="v-oid4vp-state" placeholder="auto-filled after request">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-v btn-sm" onclick="getOid4vpMetadata()">Metadata</button>
+        <button class="btn btn-v btn-sm" onclick="createOid4vpRequest()">Create Request</button>
+        <button class="btn btn-v btn-sm" onclick="pollOid4vpResult()">Poll Result</button>
+      </div>
+      <div id="v-oid4vp-status" class="sb sb-idle">Ready.</div>
+      <div id="v-oid4vp-log" class="alog" style="display:none"></div>
+      <div id="v-oid4vp-qr" class="qr-wrap" style="display:none"></div>
+      <div id="v-oid4vp-result"></div>
+      <div id="v-oid4vp-api" class="api-pane" style="display:none"></div>
+    </div>
+
+  </div><!-- /sc-grid -->
+
+  <!-- Verify -->
+  <div class="sc">
+    <div class="sc-title">Verify Presentation</div>
+    <div class="sc-sub">POST /verify — VC-LD VP or SD-JWT with revocation + expiry check</div>
+    <div class="sc-grid">
+      <div>
+        <div class="fg fg-full" style="margin-bottom:8px">
+          <label>Verifiable Presentation JSON (VC-LD)</label>
+          <textarea id="v-verify-vp" rows="6" placeholder='{"@context":…,"verifiableCredential":[…]}'></textarea>
+        </div>
+        <div class="btn-row"><button class="btn btn-v btn-sm" onclick="verifyVcLdVP()">Verify VP (VC-LD)</button></div>
+        <hr class="divider">
+        <div class="fg fg-full" style="margin-bottom:8px">
+          <label>SD-JWT string</label>
+          <textarea id="v-verify-sdjwt" rows="3" placeholder="eyJ…~disc1~disc2~"></textarea>
+        </div>
+        <div class="btn-row"><button class="btn btn-v btn-sm" onclick="verifySdJwt()">Verify SD-JWT</button></div>
+      </div>
+      <div>
+        <div id="v-verify-status" class="sb sb-idle">Ready.</div>
+        <div id="v-verify-log" class="alog" style="display:none"></div>
+        <div id="v-verify-result"></div>
+        <div id="v-verify-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+ </div>
+</div><!-- /tab-verifier -->
+
+<!-- ══ FLOWS tab ═════════════════════════════════════════════════════════ -->
+<div id="tab-flows" class="tab-panel">
+ <div class="tab-content">
+
+  <!-- Flow A -->
+  <div class="sc">
+    <div class="sc-title" style="color:#4f46e5">Flow A — OID4VCI Issuance</div>
+    <div class="sc-sub">Issuer creates offer → Holder receives via OID4VCI → Credential stored in wallet</div>
+    <div class="sc-grid">
+      <div>
+        <div class="flow-steps" id="fa-steps-vcld">
+          <div class="flow-step"><strong>1.</strong> Resolve holder DID from STATE</div>
+          <div class="flow-step"><strong>2.</strong> POST :3001/oid4vci/offer (VC-LD) → QR code</div>
+          <div class="flow-step"><strong>3.</strong> POST :3002/oid4vci/receive (VC-LD)</div>
+          <div class="flow-step"><strong>4.</strong> GET :3002/credentials → confirm stored</div>
+        </div>
+        <div class="flow-steps" id="fa-steps-sdjwt" style="display:none">
+          <div class="flow-step"><strong>1.</strong> Resolve holder DID from STATE</div>
+          <div class="flow-step"><strong>2.</strong> POST :3001/oid4vci/offer (SD-JWT, all fields) → QR</div>
+          <div class="flow-step"><strong>3.</strong> POST :3002/oid4vci/receive (SD-JWT)</div>
+          <div class="flow-step"><strong>4.</strong> GET :3002/credentials → confirm stored</div>
+        </div>
+        <div class="form-row" style="margin-bottom:4px">
+          <div class="fg fg-wide"><label>Issuer DID</label>
+            <select class="issuer-did-picker" id="fa-issuer-id">
+              <option value="">— default issuer —</option>
+            </select>
+          </div>
+          <div class="fg"><label>Format</label>
+            <select id="fa-format" onchange="toggleFlowASteps()">
+              <option value="vc-ld">VC-LD</option>
+              <option value="sd-jwt">SD-JWT</option>
+            </select>
+          </div>
+          <div class="fg"><label>Credential Type</label><input id="fa-cred-type" placeholder="auto from schema"></div>
+          <div class="fg"><label>Offer TTL (min)</label><input id="fa-ttl" type="number" min="1" placeholder="10"></div>
+        </div>
+        <div class="form-row" style="margin-bottom:4px">
+          <div class="fg fg-wide"><label>Schema Slug</label><input id="fa-schema" placeholder="employee-badge"></div>
+          <div class="fg"><label>Version</label><input id="fa-schema-ver" placeholder="1.0.0"></div>
+          <div class="fg" style="align-self:flex-end"><button class="btn btn-i btn-sm" onclick="retrieveFlowASchema()">Retrieve</button></div>
+        </div>
+        <div id="fa-schema-msg" class="sb sb-idle" style="display:none;margin-bottom:8px"></div>
+        <div class="sc-grid" id="fa-fields-grid" style="gap:8px; margin-bottom:10px; display:none"></div>
+        <div id="fa-sdfields" class="fsel" style="display:none">
+          <div class="fsel-title">Selectively Disclosable Claims:</div>
+          <div class="fsel-grid" id="fa-sdgrid"></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-i" id="btn-flow-a" style="display:none" onclick="runFlowA()">Run Flow A</button></div>
+      </div>
+      <div>
+        <div id="fa-status" class="sb sb-idle">Click Run to start.</div>
+        <div id="fa-log" class="alog" style="display:none"></div>
+        <div id="fa-qr" class="qr-wrap" style="display:none"></div>
+        <div id="fa-result"></div>
+        <div id="fa-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow B -->
+  <div class="sc">
+    <div class="sc-title" style="color:#0891b2">Flow B — OID4VP Presentation</div>
+    <div class="sc-sub">Uses credential already in wallet (from Flow A) → present via OID4VP → verifier shows result</div>
+    <div class="sc-grid">
+      <div>
+        <div class="flow-steps" id="fb-steps-vcld">
+          <div class="flow-step"><strong>1.</strong> GET :3002/credentials → confirm VC-LD exists</div>
+          <div class="flow-step"><strong>2.</strong> POST :3003/oid4vp/request (Presentation Definition: type, issuer, format, claims) → QR</div>
+          <div class="flow-step"><strong>3.</strong> POST :3002/oid4vp/initiate → auto-matches credential by PD constraints</div>
+          <div class="flow-step"><strong>4.</strong> Poll :3003/oid4vp/result → validate constraints + show table</div>
+        </div>
+        <div class="flow-steps" id="fb-steps-sdjwt" style="display:none">
+          <div class="flow-step"><strong>1.</strong> GET :3002/credentials → confirm SD-JWT exists</div>
+          <div class="flow-step"><strong>2.</strong> POST :3003/oid4vp/request (Presentation Definition: type, issuer, limit_disclosure) → QR</div>
+          <div class="flow-step"><strong>3.</strong> POST :3002/oid4vp/initiate-sdjwt → auto-matches + derives disclosed fields from PD</div>
+          <div class="flow-step"><strong>4.</strong> Poll :3003/oid4vp/result → validate constraints + show table</div>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="fg fg-wide"><label>Credential</label>
+            <select class="cred-picker" id="fb-cred" onchange="onFlowBCredChange()">
+              <option value="">— select credential —</option>
+            </select>
+          </div>
+          <div class="fg"><label>Format</label>
+            <select id="fb-format" disabled>
+              <option value="vc-ld">VC-LD</option>
+              <option value="sd-jwt">SD-JWT</option>
+            </select>
+          </div>
+        </div>
+        <div class="fsel" style="margin-bottom:10px">
+          <div class="fsel-title" style="color:#0369a1">Presentation Definition Constraints:</div>
+          <div class="form-row" style="margin-bottom:4px">
+            <div class="fg"><label>Credential Type</label><input id="fb-cred-type" placeholder="auto from credential"></div>
+            <div class="fg fg-wide"><label>Issuer DID</label><input id="fb-issuer-did" placeholder="auto from credential, optional"></div>
+          </div>
+          <div class="form-row" style="margin-bottom:0">
+            <div class="fg fg-wide"><label>Required Claims (comma-separated)</label><input id="fb-req-claims" placeholder="name, department, position"></div>
+          </div>
+        </div>
+        <div id="fb-sdfields-wrap" style="display:none">
+          <div class="fsel" style="margin-bottom:10px">
+            <div class="fsel-title">Fields to disclose in presentation:</div>
+            <div class="fsel-grid" id="fb-sdgrid"></div>
+          </div>
+        </div>
+        <div class="btn-row"><button class="btn btn-h" id="btn-flow-b" onclick="runFlowB()">Run Flow B</button></div>
+      </div>
+      <div>
+        <div id="fb-status" class="sb sb-idle">Click Run to start.</div>
+        <div id="fb-log" class="alog" style="display:none"></div>
+        <div id="fb-vp-qr" class="qr-wrap" style="display:none"></div>
+        <div id="fb-result"></div>
+        <div id="fb-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow C -->
+  <div class="sc">
+    <div class="sc-title" style="color:#059669">Flow C — Classic W3C Challenge / Verify</div>
+    <div class="sc-sub">Issue VC-LD directly → challenge → holder signs VP → verifier verifies cryptographically</div>
+    <div class="sc-grid">
+      <div>
+        <div class="flow-steps">
+          <div class="flow-step"><strong>1.</strong> POST :3001/issue (vc-ld)</div>
+          <div class="flow-step"><strong>2.</strong> POST :3002/credentials (store in wallet)</div>
+          <div class="flow-step"><strong>3.</strong> POST :3003/challenge</div>
+          <div class="flow-step"><strong>4.</strong> POST :3002/present (sign VP)</div>
+          <div class="flow-step"><strong>5.</strong> POST :3003/verify → credential subject table</div>
+        </div>
+        <div class="form-row" style="margin-bottom:4px">
+          <div class="fg fg-wide"><label>Schema Slug</label><input id="fc-schema" placeholder="employee-badge"></div>
+          <div class="fg"><label>Version</label><input id="fc-schema-ver" placeholder="1.0.0"></div>
+          <div class="fg"><label>Credential Type</label><input id="fc-cred-type" placeholder="auto from schema"></div>
+          <div class="fg" style="align-self:flex-end"><button class="btn btn-v btn-sm" onclick="retrieveFlowCSchema()">Retrieve</button></div>
+        </div>
+        <div id="fc-schema-msg" class="sb sb-idle" style="display:none;margin-bottom:8px"></div>
+        <div class="sc-grid" id="fc-fields-grid" style="gap:8px; margin-bottom:10px; display:none"></div>
+        <div class="btn-row"><button class="btn btn-v" id="btn-flow-c" style="display:none" onclick="runFlowC()">Run Flow C</button></div>
+      </div>
+      <div>
+        <div id="fc-status" class="sb sb-idle">Click Run to start.</div>
+        <div id="fc-log" class="alog" style="display:none"></div>
+        <div id="fc-result"></div>
+        <div id="fc-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+ </div>
+</div><!-- /tab-flows -->
+
+<!-- ══ REGISTRY tab ══════════════════════════════════════════════════════ -->
+<div id="tab-registry" class="tab-panel">
+ <div class="tab-content">
+
+  <!-- DID Registry -->
+  <div class="sc">
+    <div class="sc-title">DID Registry</div>
+    <div class="sc-sub">GET /registry/dids — public list of trusted issuer &amp; verifier DIDs</div>
+    <div class="btn-row"><button class="btn" style="background:#7c3aed;color:#fff" onclick="regListDids()">List DIDs</button></div>
+    <div id="reg-dids-status" class="sb sb-idle">Ready.</div>
+    <div id="reg-dids-result"></div>
+    <div id="reg-dids-api" class="api-pane" style="display:none"></div>
+  </div>
+
+  <!-- Schema Registry -->
+  <div class="sc">
+    <div class="sc-title">Schema Registry</div>
+    <div class="sc-sub">GET /registry/schemas — public list of published credential schemas</div>
+    <div class="btn-row"><button class="btn" style="background:#7c3aed;color:#fff" onclick="regListSchemas()">List Schemas</button></div>
+    <div id="reg-schemas-status" class="sb sb-idle">Ready.</div>
+    <div id="reg-schemas-result"></div>
+    <div id="reg-schemas-api" class="api-pane" style="display:none"></div>
+  </div>
+
+  <!-- Credential Revocation Registry -->
+  <div class="sc">
+    <div class="sc-title">Credential Revocation Registry</div>
+    <div class="sc-sub">GET /registry/cred-revocations — public list of status lists</div>
+    <div class="btn-row"><button class="btn" style="background:#7c3aed;color:#fff" onclick="regListRevocations()">List Status Lists</button></div>
+    <div id="reg-revocations-status" class="sb sb-idle">Ready.</div>
+    <div id="reg-revocations-result"></div>
+    <div id="reg-revocations-api" class="api-pane" style="display:none"></div>
+  </div>
+
+  <!-- Accreditations -->
+  <div class="sc">
+    <div class="sc-title">Accreditations</div>
+    <div class="sc-sub">GET /registry/accreditations · POST /registry/accreditations · DELETE /registry/accreditations/:id</div>
+    <div class="sc-grid">
+      <div>
+        <!-- List + Revoke -->
+        <div class="btn-row"><button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="regListAccreditations()">List Accreditations</button></div>
+        <hr class="divider">
+        <div class="fg fg-full" style="margin-bottom:10px">
+          <label>Accreditation to revoke</label>
+          <select id="reg-accred-revoke-id">
+            <option value="">— select accreditation —</option>
+          </select>
+        </div>
+        <div class="btn-row"><button class="btn btn-sm" style="background:#dc2626;color:#fff" onclick="regRevokeAccreditation()">Revoke</button></div>
+        <div id="reg-accred-status" class="sb sb-idle">Ready.</div>
+        <div id="reg-accred-log" class="alog" style="display:none"></div>
+        <div id="reg-accred-result"></div>
+        <div id="reg-accred-api" class="api-pane" style="display:none"></div>
+      </div>
+      <div>
+        <!-- Grant -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:.82rem;font-weight:700;color:#374151">Grant Accreditation</div>
+          <button class="btn btn-sm" style="background:#f3f4f6;border:1px solid #e5e7eb;color:#374151;font-size:.75rem" onclick="regLoadGrantDropdowns()">↺ Reload</button>
+        </div>
+        <div class="form-row">
+          <div class="fg fg-wide"><label>Issuer Identity</label>
+            <select id="reg-accred-identity-id">
+              <option value="">— select issuer —</option>
+            </select>
+          </div>
+          <div class="fg fg-wide"><label>Schema</label>
+            <select id="reg-accred-schema-id">
+              <option value="">— select schema —</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label>Trust Level</label>
+            <select id="reg-accred-trust-level">
+              <option value="self-asserted">self-asserted</option>
+              <option value="accredited">accredited</option>
+              <option value="government">government</option>
+            </select>
+          </div>
+          <div class="fg fg-wide"><label>Accreditor DID (optional)</label><input id="reg-accred-accreditor-did" placeholder="did:key:…"></div>
+        </div>
+        <div class="form-row">
+          <div class="fg fg-wide"><label>Valid Until (optional)</label><input id="reg-accred-valid-until" type="datetime-local"></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-sm" style="background:#059669;color:#fff" onclick="regGrantAccreditation()">Grant</button></div>
+        <div id="reg-grant-status" class="sb sb-idle">Ready.</div>
+        <div id="reg-grant-result"></div>
+        <div id="reg-grant-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verify Issuer -->
+  <div class="sc">
+    <div class="sc-title">Verify Issuer</div>
+    <div class="sc-sub">GET /registry/verify — check if an issuer is accredited for a schema</div>
+    <div class="sc-grid">
+      <div>
+        <div class="form-row">
+          <div class="fg fg-wide"><label>Issuer DID</label><input id="reg-verify-did" placeholder="did:key:z6Mk…"></div>
+          <div class="fg"><label>Schema Slug</label><input id="reg-verify-schema" placeholder="employee-badge"></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="regVerifyIssuer()">Verify</button></div>
+      </div>
+      <div>
+        <div id="reg-verify-status" class="sb sb-idle">Ready.</div>
+        <div id="reg-verify-result"></div>
+        <div id="reg-verify-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+ </div>
+</div><!-- /tab-registry -->
+
+<script>
+const BASE = window.location.pathname.replace(/\/[^/]*$/, '');
+
+// ══ Service URLs (overwritten from /demo/config on load) ═════════════════
+let ISSUER_URL   = 'http://localhost:3001';
+let HOLDER_URL   = 'http://localhost:3002';
+let VERIFIER_URL = 'http://localhost:3003';
+let DEMO_URL     = 'http://localhost:3004';
+let REGISTRY_URL = 'http://localhost:3005';
+
+const SD_FIELDS = [
+  {key:'name',        label:'Full Name'},
+  {key:'department',  label:'Department'},
+  {key:'position',    label:'Job Title'},
+  {key:'startDate',   label:'Start Date'},
+  {key:'accessLevel', label:'Access Level'},
+];
+
+const GRID_FIELDS = {};
+
+const FIELD_DEFAULTS = {
+  name:        'Alice Smith',
+  department:  'Engineering',
+  position:    'Senior Engineer',
+  startDate:   '2024-01-15',
+  accessLevel: 'Level-3',
+};
+
+const KEY_PURPOSES = ['assertionMethod','authentication','capabilityDelegation','capabilityInvocation'];
+
+// ══ State ════════════════════════════════════════════════════════════════
+const STATE = {
+  clientId:'', apiKey:'',
+  issuerDid:null, holderDid:null, verifierDid:null,
+  lastOfferUri:null, lastVpRequest:null,
+  lastChallenge:null, lastDomain:'verifier.example.org',
+  lastVp:null, credentialList:[], holderDids:[], issuerDids:[],
+};
+
+// ══ Bootstrap ════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  // wire tabs
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+  // build SD-JWT field selector grids
+  buildFieldSelector('i-issue-sdgrid',    'chk-ii');
+  buildFieldSelector('i-oid4vci-sdgrid',  'chk-io');
+  buildFieldSelector('h-present-sdgrid',  'chk-hp');
+  buildFieldSelector('h-oid4vp-sdgrid',   'chk-hv');
+  buildFieldSelector('fb-sdgrid',         'chk-fb');
+
+  // load config
+  try {
+    const cfg = await fetch(`${BASE}/demo/config`).then(r => r.json());
+    STATE.clientId = cfg.clientId;
+    STATE.apiKey   = cfg.apiKey;
+    if (cfg.issuerUrl)   ISSUER_URL   = cfg.issuerUrl;
+    if (cfg.holderUrl)   HOLDER_URL   = cfg.holderUrl;
+    if (cfg.verifierUrl) VERIFIER_URL = cfg.verifierUrl;
+    if (cfg.registryUrl) {
+      REGISTRY_URL = cfg.registryUrl;
+      document.getElementById('btn-registry-link').href = cfg.registryUrl;
+    }
+    if (cfg.demoUrl)     DEMO_URL     = cfg.demoUrl;
+    document.getElementById('cfg-client-id').value = cfg.clientId;
+    document.getElementById('cfg-api-key').value   = cfg.apiKey;
+    document.getElementById('cfg-status').textContent = 'Config loaded.';
+  } catch {
+    document.getElementById('cfg-status').textContent = 'Could not load /demo/config';
+  }
+
+  // auto-init DIDs
+  await initializeAll();
+  await repopulateCredentialPickers();
+  await repopulateHolderDidPickers();
+  await repopulateIssuerDidPickers();
+});
+
+// ══ Core helpers ═════════════════════════════════════════════════════════
+function saveConfig() {
+  STATE.clientId = document.getElementById('cfg-client-id').value.trim();
+  STATE.apiKey   = document.getElementById('cfg-api-key').value.trim();
+  document.getElementById('cfg-status').textContent = 'Saved.';
+}
+
+function switchTab(t) {
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === t));
+  document.querySelectorAll('.tab-panel').forEach(p =>
+    p.classList.toggle('active', p.id === `tab-${t}`));
+  if (t === 'registry') { regLoadGrantDropdowns(); regListAccreditations(); }
+}
+
+function authHeaders() {
+  return {'Content-Type':'application/json','x-api-client':STATE.clientId,'x-api-key':STATE.apiKey};
+}
+
+// Maps internal format values to OID4VCI spec format identifiers
+function toOid4vciFormat(fmt) {
+  return fmt === 'sd-jwt' ? 'vc+sd-jwt' : 'ldp_vc';
+}
+
+async function apiPost(url, body={}) {
+  const res  = await fetch(url, {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+  const data = await res.json();
+  if (!res.ok) throw Object.assign(new Error(data.error||'Request failed'), {data});
+  return data;
+}
+
+async function apiGet(url) {
+  const res  = await fetch(url, {headers:authHeaders()});
+  const data = await res.json();
+  if (!res.ok) throw Object.assign(new Error(data.error||'Request failed'), {data});
+  return data;
+}
+
+function setStatus(id, msg, type='idle') {
+  const el = document.getElementById(`${id}-status`);
+  if (!el) return;
+  el.textContent = msg;
+  el.className   = `sb sb-${type}`;
+}
+
+function appendLog(id, msg, level='ok') {
+  const box = document.getElementById(`${id}-log`);
+  if (!box) return;
+  box.style.display = 'block';
+  const e = document.createElement('div');
+  e.className   = `l${level}`;
+  e.textContent = `${new Date().toLocaleTimeString()} ${msg}`;
+  box.appendChild(e);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setResult(id, html) {
+  const el = document.getElementById(`${id}-result`);
+  if (el) el.innerHTML = html;
+}
+
+function showQr(id, svg) {
+  const w = document.getElementById(id);
+  if (!w) return;
+  w.style.display = 'flex';
+  w.innerHTML = svg + '<span class="qr-lbl">Scan with compatible wallet</span>';
+}
+
+function makeTable(rows) {
+  return '<table class="rt">' +
+    rows.map(([k,v]) => `<tr><td>${k}</td><td>${v??'—'}</td></tr>`).join('') +
+    '</table>';
+}
+
+function makeJson(data) {
+  return `<pre class="jb">${JSON.stringify(data,null,2)}</pre>`;
+}
+
+function short(s, n=50) { return s && s.length>n ? s.slice(0,n)+'…' : (s??'—'); }
+
+function errMsg(err) {
+  const d = err.data?.details ?? err.data?.error;
+  return err.message + (d ? ` — ${typeof d==='string'?d:JSON.stringify(d)}` : '');
+}
+
+// ══ Field selector ═══════════════════════════════════════════════════════
+function buildFieldSelector(gridId, prefix, fields=SD_FIELDS, allChecked=true) {
+  GRID_FIELDS[prefix] = fields;
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = '';
+  fields.forEach(({key,label}) => {
+    const lbl = document.createElement('label');
+    lbl.className = `fck${allChecked?' on':''}`;
+    lbl.id = `wrap-${prefix}-${key}`;
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = allChecked;
+    cb.id = `${prefix}-${key}`;
+    cb.onchange = () => lbl.className = `fck${cb.checked?' on':''}`;
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(' '+label));
+    grid.appendChild(lbl);
+  });
+}
+
+function getSelectedFields(prefix) {
+  return (GRID_FIELDS[prefix] || SD_FIELDS).map(f=>f.key).filter(k=>document.getElementById(`${prefix}-${k}`)?.checked);
+}
+
+// Tick only the keys in requiredClaims; uncheck the rest.
+// Call AFTER buildFieldSelector has (re)built the grid.
+function applyRequiredClaimsToDisclosure(prefix, requiredClaims) {
+  if (!requiredClaims.length) return; // no constraint — leave all as-is
+  (GRID_FIELDS[prefix] || SD_FIELDS).forEach(({key}) => {
+    const cb  = document.getElementById(`${prefix}-${key}`);
+    const lbl = document.getElementById(`wrap-${prefix}-${key}`);
+    if (!cb) return;
+    const on = requiredClaims.includes(key);
+    cb.checked = on;
+    if (lbl) lbl.className = `fck${on ? ' on' : ''}`;
+  });
+}
+
+function humanizeKey(k) {
+  return k.replace(/([A-Z])/g,' $1').replace(/^./, s=>s.toUpperCase());
+}
+
+function credTypeFromSlug(slug) {
+  return slug.split(/[-_]/).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('') + 'Credential';
+}
+
+function showSchemaMsg(msg, type) {
+  const el = document.getElementById('i-issue-schema-msg');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `sb sb-${type}`;
+  el.style.display = 'block';
+}
+
+async function retrieveSchemaFields() {
+  const slug    = document.getElementById('i-issue-schema').value.trim();
+  const version = document.getElementById('i-issue-schema-ver').value.trim();
+  if (!slug) { showSchemaMsg('Enter a schema slug.', 'error'); return; }
+  showSchemaMsg('Loading…', 'info');
+  try {
+    const qs     = version ? `?version=${encodeURIComponent(version)}` : '';
+    const schema = await apiGet(`${ISSUER_URL}/schemas/${encodeURIComponent(slug)}${qs}`);
+    const props = schema?.properties || {};
+    const keys = Object.keys(props);
+    if (!keys.length) { showSchemaMsg('Schema has no properties.', 'error'); return; }
+    const fields = keys.map(k => ({key:k, label:props[k].title || humanizeKey(k)}));
+    buildFieldsGrid('i-issue-fields-grid', fields);
+    buildFieldSelector('i-issue-sdgrid', 'chk-ii', fields);
+    document.getElementById('i-issue-fields-grid').style.display = '';
+    document.getElementById('i-issue-btn-row').style.display = '';
+    const credType = document.getElementById('i-issue-cred-type');
+    if (credType && !credType.value) credType.value = schema.title?.replace(/Subject$/i, '') || credTypeFromSlug(slug);
+    showSchemaMsg(`Loaded ${keys.length} field(s) from "${slug}".`, 'success');
+  } catch(e) {
+    const msg = e.data?.error || e.message || '';
+    showSchemaMsg(/not found/i.test(msg) ? `Schema "${slug}" not found.` : msg, 'error');
+  }
+}
+
+function showOid4vciSchemaMsg(msg, type) {
+  const el = document.getElementById('i-oid4vci-schema-msg');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `sb sb-${type}`;
+  el.style.display = 'block';
+}
+
+async function retrieveOid4vciSchemaFields() {
+  const slug    = document.getElementById('i-oid4vci-schema').value.trim();
+  const version = document.getElementById('i-oid4vci-schema-ver').value.trim();
+  if (!slug) { showOid4vciSchemaMsg('Enter a schema slug.', 'error'); return; }
+  showOid4vciSchemaMsg('Loading…', 'info');
+  try {
+    const qs     = version ? `?version=${encodeURIComponent(version)}` : '';
+    const schema = await apiGet(`${ISSUER_URL}/schemas/${encodeURIComponent(slug)}${qs}`);
+    const props = schema?.properties || {};
+    const keys = Object.keys(props);
+    if (!keys.length) { showOid4vciSchemaMsg('Schema has no properties.', 'error'); return; }
+    const fields = keys.map(k => ({key:k, label:props[k].title || humanizeKey(k)}));
+    buildFieldsGrid('i-oid4vci-fields-grid', fields);
+    buildFieldSelector('i-oid4vci-sdgrid', 'chk-io', fields);
+    document.getElementById('i-oid4vci-fields-grid').style.display = '';
+    document.getElementById('i-oid4vci-offer-btn').style.display = '';
+    toggleOid4vciFields();
+    const credType = document.getElementById('i-oid4vci-cred-type');
+    if (credType && !credType.value) credType.value = schema.title?.replace(/Subject$/i, '') || credTypeFromSlug(slug);
+    showOid4vciSchemaMsg(`Loaded ${keys.length} field(s) from "${slug}".`, 'success');
+  } catch(e) {
+    const msg = e.data?.error || e.message || '';
+    showOid4vciSchemaMsg(/not found/i.test(msg) ? `Schema "${slug}" not found.` : msg, 'error');
+  }
+}
+
+function showFlowMsg(prefix, msg, type) {
+  const el = document.getElementById(`${prefix}-schema-msg`);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `sb sb-${type}`;
+  el.style.display = 'block';
+}
+
+function toggleFlowASD() {
+  const loaded = document.getElementById('fa-fields-grid').style.display !== 'none';
+  const sd     = document.getElementById('fa-format').value === 'sd-jwt';
+  document.getElementById('fa-sdfields').style.display = (loaded && sd) ? 'block' : 'none';
+}
+
+async function retrieveFlowASchema() {
+  const slug    = document.getElementById('fa-schema').value.trim();
+  const version = document.getElementById('fa-schema-ver').value.trim();
+  if (!slug) { showFlowMsg('fa', 'Enter a schema slug.', 'error'); return; }
+  showFlowMsg('fa', 'Loading…', 'info');
+  try {
+    const qs     = version ? `?version=${encodeURIComponent(version)}` : '';
+    const schema = await apiGet(`${ISSUER_URL}/schemas/${encodeURIComponent(slug)}${qs}`);
+    const props  = schema?.properties || {};
+    const keys   = Object.keys(props);
+    if (!keys.length) { showFlowMsg('fa', 'Schema has no properties.', 'error'); return; }
+    const fields = keys.map(k => ({key: k, label: props[k].title || humanizeKey(k)}));
+    buildFieldsGrid('fa-fields-grid', fields);
+    buildFieldSelector('fa-sdgrid', 'chk-fa', fields);
+    document.getElementById('fa-fields-grid').style.display = '';
+    document.getElementById('btn-flow-a').style.display = '';
+    const credType = document.getElementById('fa-cred-type');
+    if (credType && !credType.value) credType.value = schema.title?.replace(/Subject$/i, '') || credTypeFromSlug(slug);
+    toggleFlowASD();
+    showFlowMsg('fa', `Loaded ${keys.length} field(s) from "${slug}".`, 'success');
+  } catch(e) {
+    const msg = e.data?.error || e.message || '';
+    showFlowMsg('fa', /not found/i.test(msg) ? `Schema "${slug}" not found.` : msg, 'error');
+  }
+}
+
+async function retrieveFlowCSchema() {
+  const slug    = document.getElementById('fc-schema').value.trim();
+  const version = document.getElementById('fc-schema-ver').value.trim();
+  if (!slug) { showFlowMsg('fc', 'Enter a schema slug.', 'error'); return; }
+  showFlowMsg('fc', 'Loading…', 'info');
+  try {
+    const qs     = version ? `?version=${encodeURIComponent(version)}` : '';
+    const schema = await apiGet(`${ISSUER_URL}/schemas/${encodeURIComponent(slug)}${qs}`);
+    const props  = schema?.properties || {};
+    const keys   = Object.keys(props);
+    if (!keys.length) { showFlowMsg('fc', 'Schema has no properties.', 'error'); return; }
+    const fields = keys.map(k => ({key: k, label: props[k].title || humanizeKey(k)}));
+    buildFieldsGrid('fc-fields-grid', fields);
+    document.getElementById('fc-fields-grid').style.display = '';
+    document.getElementById('btn-flow-c').style.display = '';
+    const credType = document.getElementById('fc-cred-type');
+    if (credType && !credType.value) credType.value = schema.title?.replace(/Subject$/i, '') || credTypeFromSlug(slug);
+    showFlowMsg('fc', `Loaded ${keys.length} field(s) from "${slug}".`, 'success');
+  } catch(e) {
+    const msg = e.data?.error || e.message || '';
+    showFlowMsg('fc', /not found/i.test(msg) ? `Schema "${slug}" not found.` : msg, 'error');
+  }
+}
+
+function buildFieldsGrid(gridId, fields) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = '';
+  fields.forEach(({key, label}) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'fg';
+    const lbl = document.createElement('label');
+    lbl.textContent = label;
+    const inp = document.createElement('input');
+    inp.dataset.key = key;
+    inp.value = FIELD_DEFAULTS[key] ?? '';
+    inp.placeholder = label;
+    wrap.appendChild(lbl);
+    wrap.appendChild(inp);
+    grid.appendChild(wrap);
+  });
+}
+
+// ══ Credential pickers ═══════════════════════════════════════════════════
+async function repopulateCredentialPickers() {
+  try {
+    const {credentials} = await apiGet(`${HOLDER_URL}/credentials`);
+    STATE.credentialList = credentials||[];
+    document.querySelectorAll('.cred-picker').forEach(sel => {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— select credential —</option>';
+      (credentials||[]).forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id;
+        o.textContent = `${(c.format||'').toUpperCase()} — ${short(c.id,36)}`;
+        if (c.id===cur) o.selected = true;
+        sel.appendChild(o);
+      });
+    });
+  } catch { /* wallet may be empty */ }
+}
+
+async function repopulateHolderDidPickers() {
+  try {
+    const {dids} = await apiGet(`${HOLDER_URL}/dids`);
+    STATE.holderDids = dids || [];
+    document.querySelectorAll('.holder-did-picker').forEach(sel => {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— default holder DID —</option>';
+      (dids || []).forEach(d => {
+        const o = document.createElement('option');
+        o.value = d.did;
+        o.textContent = `${d.name || 'Unnamed'} — ${short(d.did, 36)}`;
+        if (d.did === cur) o.selected = true;
+        sel.appendChild(o);
+      });
+    });
+  } catch { /* holder may not be ready */ }
+}
+
+async function repopulateIssuerDidPickers() {
+  try {
+    const {dids} = await apiGet(`${ISSUER_URL}/dids`);
+    STATE.issuerDids = dids || [];
+    document.querySelectorAll('.issuer-did-picker').forEach(sel => {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— default issuer —</option>';
+      (dids || []).forEach(d => {
+        const o = document.createElement('option');
+        o.value = d.did;
+        o.textContent = `${d.name || 'Unnamed'} — ${short(d.did, 36)}`;
+        if (d.did === cur) o.selected = true;
+        sel.appendChild(o);
+      });
+    });
+  } catch { /* issuer may not be ready */ }
+}
+
+function onPresentCredChange() {
+  const id   = document.getElementById('h-present-cred').value;
+  const cred = STATE.credentialList.find(c=>c.id===id);
+  const show = cred?.format==='sd-jwt';
+  document.getElementById('h-present-sdfields').style.display = show ? 'block' : 'none';
+}
+
+// ══ Format toggles ═══════════════════════════════════════════════════════
+function toggleIssueFields() {
+  const sd = document.getElementById('i-issue-format').value === 'sd-jwt';
+  document.getElementById('i-issue-sdfields').style.display = sd ? 'block' : 'none';
+}
+function toggleOid4vciFields() {
+  const loaded = document.getElementById('i-oid4vci-fields-grid').style.display !== 'none';
+  const sd = document.getElementById('i-oid4vci-format').value === 'sd-jwt';
+  document.getElementById('i-oid4vci-sdfields').style.display = (loaded && sd) ? 'block' : 'none';
+}
+function toggleOid4vpFields() {
+  const sd = document.getElementById('h-oid4vp-mode').value === 'sd-jwt';
+  document.getElementById('h-oid4vp-sdfields').style.display = sd ? 'block' : 'none';
+}
+
+function parseSdJwtFields(sdJwt) {
+  if (!sdJwt) return SD_FIELDS;
+  try {
+    const parts = sdJwt.split('~');
+    const fields = parts.slice(1).filter(Boolean).map(d => {
+      try {
+        const pad = d.length % 4 ? d + '='.repeat(4 - d.length % 4) : d;
+        const arr = JSON.parse(atob(pad.replace(/-/g, '+').replace(/_/g, '/')));
+        if (Array.isArray(arr) && arr.length >= 2 && typeof arr[1] === 'string') {
+          return {key: arr[1], label: humanizeKey(arr[1])};
+        }
+      } catch {}
+      return null;
+    }).filter(Boolean);
+    return fields.length ? fields : SD_FIELDS;
+  } catch {
+    return SD_FIELDS;
+  }
+}
+
+function onOid4vpCredChange() {
+  const id   = document.getElementById('h-oid4vp-cred').value;
+  const cred = STATE.credentialList.find(c => c.id === id);
+  const modeEl = document.getElementById('h-oid4vp-mode');
+  if (cred) {
+    const mode = cred.format === 'sd-jwt' ? 'sd-jwt' : 'vc-ld';
+    modeEl.value = mode;
+    if (cred.format === 'sd-jwt') {
+      const fields = parseSdJwtFields(cred.sdJwt);
+      buildFieldSelector('h-oid4vp-sdgrid', 'chk-hv', fields);
+    }
+  } else {
+    modeEl.value = 'vc-ld';
+  }
+  toggleOid4vpFields();
+}
+
+async function initiateOid4vp() {
+  const mode = document.getElementById('h-oid4vp-mode').value;
+  if (mode === 'sd-jwt') {
+    await initiateOid4vpSdJwt();
+  } else {
+    await initiateOid4vpVcLd();
+  }
+}
+
+// ══ Setup / Initialize ═══════════════════════════════════════════════════
+async function initializeAll() {
+  const services = [
+    {key:'issuer',   url:ISSUER_URL,   name:'Issuer Default'},
+    {key:'holder',   url:HOLDER_URL,   name:'Holder Default'},
+    {key:'verifier', url:VERIFIER_URL, name:'Verifier Default'},
+  ];
+  for (const svc of services) {
+    try {
+      let {dids} = await apiGet(`${svc.url}/dids`);
+      const validDids = (dids || []).filter(d => d.did);
+      if (!validDids.length) {
+        const r = await apiPost(`${svc.url}/create`, {name: svc.name});
+        validDids.push(r);
+      }
+      const did = validDids[0].did;
+      STATE[`${svc.key}Did`] = did;
+      document.getElementById(`dot-${svc.key}`).className = 'setup-dot ok';
+      document.getElementById(`did-${svc.key}`).textContent = short(did, 55);
+    } catch (e) {
+      document.getElementById(`dot-${svc.key}`).className = 'setup-dot err';
+      document.getElementById(`did-${svc.key}`).textContent = 'Error: ' + e.message;
+    }
+  }
+  // auto-fill holder DID into issue form
+  if (STATE.holderDid) {
+    const el = document.getElementById('i-issue-holder');
+    if (el && !el.value) el.value = STATE.holderDid;
+  }
+}
+
+// ══ Cross-section auto-fill callbacks ═══════════════════════════════════
+function onOfferCreated(uri) {
+  STATE.lastOfferUri = uri;
+  const el = document.getElementById('h-oid4vci-uri');
+  if (el) el.value = uri;
+}
+function onVpRequestCreated(state, requestUri, openid4vpUri) {
+  STATE.lastVpRequest = {state, requestUri, openid4vpUri};
+  const si = document.getElementById('v-oid4vp-state');
+  if (si) si.value = state;
+  const ri = document.getElementById('h-oid4vp-uri');
+  if (ri) ri.value = openid4vpUri || requestUri;
+}
+function onChallengeIssued(challenge, domain) {
+  STATE.lastChallenge = challenge;
+  STATE.lastDomain    = domain;
+  const ci = document.getElementById('h-present-challenge');
+  if (ci) ci.value = challenge;
+  const di = document.getElementById('h-present-domain');
+  if (di) di.value = domain;
+}
+function onVpCreated(vp) {
+  STATE.lastVp = vp;
+  const el = document.getElementById('v-verify-vp');
+  if (el) el.value = JSON.stringify(vp, null, 2);
+}
+
+// ══ Polling ══════════════════════════════════════════════════════════════
+function startPoll(url, onResult, onError) {
+  const t = setInterval(async () => {
+    try {
+      const r = await apiGet(url);
+      if (r.status !== 'pending') { clearInterval(t); onResult(r); }
+    } catch(e) { clearInterval(t); onError(e); }
+  }, 1000);
+  return () => clearInterval(t);
+}
+
+// ── Trust registry banner ─────────────────────────────────────────────────
+function trustBanner(result) {
+  const tr = result.trustRegistry;
+  if (!tr) return '';
+  if (tr.trusted) {
+    const lvlColor = tr.trustLevel === 'government' ? '#78350f' : tr.trustLevel === 'accredited' ? '#1e3a5f' : '#374151';
+    const lvlBg    = tr.trustLevel === 'government' ? '#fef3c7' : tr.trustLevel === 'accredited' ? '#dbeafe' : '#f3f4f6';
+    const expiry   = tr.validUntil ? ` · expires ${tr.validUntil.slice(0,10)}` : '';
+    return `<div style="margin-top:8px;padding:8px 12px;border-radius:6px;background:#d1fae5;color:#065f46;font-size:13px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">✓</span>
+      <span><strong>Trust Registry: Accredited</strong>
+        <span style="margin-left:8px;padding:2px 7px;border-radius:4px;font-size:11px;background:${lvlBg};color:${lvlColor}">${tr.trustLevel}</span>
+        ${expiry}
+      </span></div>`;
+  }
+  const msg = result.trustWarning ?? 'Issuer is not in the trust registry';
+  return `<div style="margin-top:8px;padding:8px 12px;border-radius:6px;background:#fef3c7;color:#92400e;font-size:13px;display:flex;align-items:center;gap:8px">
+    <span style="font-size:16px">⚠</span>
+    <span><strong>Trust Warning:</strong> ${msg}</span></div>`;
+}
+
+// ══ Shared verification result renderer ═════════════════════════════════
+function renderVerifyResult(containerId, result, disclosedFields=[]) {
+  const el = document.getElementById(containerId);
+  if (!result.verified) {
+    el.innerHTML = `<div class="sb sb-error">FAILED: ${result.error??'Unknown'}</div>`;
+    return;
+  }
+  if (result.format === 'sd-jwt') {
+    const disc        = result.disclosedClaims ?? {};
+    const disclosedKeys = new Set(Object.keys(disc));
+    // Show disclosed claims + any explicitly requested-but-withheld fields
+    const allKeys = disclosedFields.length
+      ? [...new Set([...disclosedFields, ...disclosedKeys])]
+      : [...disclosedKeys];
+    const rows = allKeys.map(key => {
+      const revealed = disclosedKeys.has(key);
+      const badge    = revealed
+        ? `<span class="badge bdg-green">disclosed</span>`
+        : `<span class="badge bdg-gray">withheld</span>`;
+      return [humanizeKey(key), (revealed && disc[key] != null ? disc[key] + ' ' : '') + badge];
+    });
+    el.innerHTML = makeTable([
+      ['Issuer',      short(result.issuer)],
+      ['Subject',     short(result.holder)],
+      ...rows,
+      ['Verified At', result.verifiedAt ?? '—'],
+    ]) + trustBanner(result);
+  } else {
+    const s = result.credential?.credentialSubject ?? {};
+    const subjectRows = Object.entries(s)
+      .filter(([k]) => k !== 'id')
+      .map(([k, v]) => [humanizeKey(k), typeof v === 'object' ? JSON.stringify(v) : (v ?? '—')]);
+    el.innerHTML = makeTable([
+      ['Holder',      short(result.holder)],
+      ['Issuer',      short(result.credential?.issuer)],
+      ...subjectRows,
+      ['Verified At', result.verifiedAt ?? new Date().toISOString()],
+    ]) + trustBanner(result);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ISSUER handlers
+// ══════════════════════════════════════════════════════════════════════════
+// ── API inspector helpers ─────────────────────────────────────────────────
+function showReq(sid, method, url, body) {
+  const p = document.getElementById(`${sid}-api`);
+  if (!p) return;
+  p.style.display = 'block';
+  const bodyHtml = body && Object.keys(body).length
+    ? `<pre class="api-body">${JSON.stringify(body, null, 2)}</pre>` : '';
+  p.innerHTML =
+    `<div class="api-req"><div class="api-label">Request</div>` +
+    `<span class="api-meth api-${method.toLowerCase()}">${method}</span>` +
+    `<span class="api-url">${url}</span>${bodyHtml}</div>` +
+    `<div class="api-res api-wait" id="${sid}-api-res" style="padding:9px 13px">Waiting for response…</div>`;
+}
+
+function showRes(sid, status, data) {
+  const r = document.getElementById(`${sid}-api-res`);
+  if (!r) return;
+  const ok = status >= 200 && status < 300;
+  r.className = 'api-res';
+  r.innerHTML =
+    `<div class="api-label">Response</div>` +
+    `<span class="api-st ${ok ? 'api-ok' : 'api-err'}">${status || 0} ${ok ? 'OK' : 'Error'}</span>` +
+    `<pre class="api-body">${JSON.stringify(data, null, 2)}</pre>`;
+}
+
+async function apiInspect(sid, method, url, body) {
+  showReq(sid, method, url, body);
+  try {
+    const opts = method === 'GET'
+      ? {headers: authHeaders()}
+      : {method: 'POST', headers: authHeaders(), body: JSON.stringify(body ?? {})};
+    const res  = await fetch(url, opts);
+    const data = await res.json();
+    showRes(sid, res.status, data);
+    if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed'), {data});
+    return data;
+  } catch (err) {
+    if (!err.data) showRes(sid, 0, {error: err.message});
+    throw err;
+  }
+}
+
+async function apiInspectAppend(sid, method, url, body) {
+  const pane = document.getElementById(`${sid}-api`);
+  if (!pane) return apiInspect(sid, method, url, body);
+  pane.style.display = 'block';
+  const stepEl = document.createElement('div');
+  stepEl.className = 'api-step';
+  const resId = 'fres-' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+  const bodyHtml = body && Object.keys(body).length
+    ? `<pre class="api-body">${JSON.stringify(body, null, 2)}</pre>` : '';
+  stepEl.innerHTML =
+    `<div class="api-req"><div class="api-label">Request</div>` +
+    `<span class="api-meth api-${method.toLowerCase()}">${method}</span>` +
+    `<span class="api-url">${url}</span>${bodyHtml}</div>` +
+    `<div class="api-res api-wait" id="${resId}" style="padding:9px 13px">Waiting…</div>`;
+  pane.appendChild(stepEl);
+  pane.scrollTop = pane.scrollHeight;
+  try {
+    const opts = method === 'GET'
+      ? {headers: authHeaders()}
+      : {method: 'POST', headers: authHeaders(), body: JSON.stringify(body ?? {})};
+    const res  = await fetch(url, opts);
+    const data = await res.json();
+    const ok   = res.status >= 200 && res.status < 300;
+    const r    = document.getElementById(resId);
+    if (r) {
+      r.className = 'api-res';
+      r.innerHTML = `<div class="api-label">Response</div>` +
+        `<span class="api-st ${ok?'api-ok':'api-err'}">${res.status} ${ok?'OK':'Error'}</span>` +
+        `<pre class="api-body">${JSON.stringify(data, null, 2)}</pre>`;
+    }
+    if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed'), {data});
+    return data;
+  } catch (err) {
+    if (!err.data) {
+      const r = document.getElementById(resId);
+      if (r) {
+        r.className = 'api-res';
+        r.innerHTML = `<div class="api-label">Response</div>` +
+          `<span class="api-st api-err">0 Error</span>` +
+          `<pre class="api-body">${JSON.stringify({error: err.message}, null, 2)}</pre>`;
+      }
+    }
+    throw err;
+  }
+}
+
+// ── ISSUER handlers ───────────────────────────────────────────────────────
+async function listIssuerDids() {
+  setStatus('i-dids','Fetching DIDs…','info');
+  try {
+    const {dids} = await apiInspect('i-dids','GET',`${ISSUER_URL}/dids`);
+    appendLog('i-dids',`Found ${dids.length} DID(s)`);
+    setStatus('i-dids',`${dids.length} DID(s) found.`,'success');
+    setResult('i-dids', makeTable(dids.map(d=>[short(d.did,44), d.name??'—'])));
+  } catch(e) { appendLog('i-dids',errMsg(e),'err'); setStatus('i-dids',e.message,'error'); }
+}
+function toggleDomainField(prefix) {
+  const method = document.getElementById(`${prefix}-did-method`).value;
+  const wrap   = document.getElementById(`${prefix}-did-domain-wrap`);
+  if (wrap) wrap.style.display = method === 'did:web' ? '' : 'none';
+}
+
+async function createIssuerDid() {
+  const name      = document.getElementById('i-did-name').value.trim();
+  const didMethod = document.getElementById('i-did-method').value;
+  const domain    = didMethod === 'did:web' ? document.getElementById('i-did-domain').value.trim() : undefined;
+  const body      = {name, didMethod, ...(domain && {domain})};
+  setStatus('i-dids','Creating DID…','info');
+  try {
+    const r = await apiInspect('i-dids','POST',`${ISSUER_URL}/create`, body);
+    appendLog('i-dids','Created: '+short(r.did));
+    setStatus('i-dids','Created.','success');
+    setResult('i-dids', makeTable([['DID',r.did],['Name',r.name??name]]));
+    STATE.issuerDid = r.did;
+    await repopulateIssuerDidPickers();
+  } catch(e) { appendLog('i-dids',errMsg(e),'err'); setStatus('i-dids',e.message,'error'); }
+}
+
+async function issueCredential() {
+  const holderDid  = document.getElementById('i-issue-holder').value.trim()||STATE.holderDid;
+  const format     = document.getElementById('i-issue-format').value;
+  const issuerDid  = document.getElementById('i-issue-issuer-id').value || undefined;
+  const employee   = {};
+  document.querySelectorAll('#i-issue-fields-grid input[data-key]').forEach(inp => {
+    employee[inp.dataset.key] = inp.value;
+  });
+  const schemaSlug      = document.getElementById('i-issue-schema').value.trim()||undefined;
+  const schemaVersion   = document.getElementById('i-issue-schema-ver').value.trim()||undefined;
+  const credentialType  = document.getElementById('i-issue-cred-type').value.trim()||undefined;
+  const expiresInDays   = document.getElementById('i-issue-expires-days').value.trim()||undefined;
+  const expirationDate  = document.getElementById('i-issue-expiry-date').value||undefined;
+  const disclosableClaims = format==='sd-jwt' ? getSelectedFields('chk-ii') : undefined;
+  setStatus('i-issue','Issuing…','info');
+  try {
+    const body = {holderDid, subject: employee, format};
+    if (issuerDid) body.issuerDid = issuerDid;
+    if (schemaSlug)      body.schemaSlug      = schemaSlug;
+    if (schemaVersion)   body.schemaVersion   = schemaVersion;
+    if (credentialType)  body.credentialType  = credentialType;
+    if (expiresInDays)   body.expiresInDays   = Number(expiresInDays);
+    if (expirationDate)  body.expirationDate  = new Date(expirationDate).toISOString();
+    if (disclosableClaims) body.disclosableClaims = disclosableClaims;
+    const r = await apiInspect('i-issue','POST',`${ISSUER_URL}/issue`, body);
+    appendLog('i-issue','Issued '+short(r.credentialId||r.verifiableCredential?.id));
+    setStatus('i-issue','Issued.','success');
+    if (r.credentialId) {
+      setResult('i-issue', makeTable([['Credential ID',r.credentialId],['Format',r.format],['SD-JWT',short(r.sdJwt,60)]]));
+      document.getElementById('i-revoke-id').value = r.credentialId;
+    } else {
+      setResult('i-issue', makeTable([['ID',r.verifiableCredential?.id],['Type',r.verifiableCredential?.type?.join(', ')]]));
+      document.getElementById('i-revoke-id').value = r.verifiableCredential?.id||'';
+    }
+    await repopulateCredentialPickers();
+  } catch(e) { appendLog('i-issue',errMsg(e),'err'); setStatus('i-issue',e.message,'error'); }
+}
+
+async function revokeCredential() {
+  const id = document.getElementById('i-revoke-id').value.trim();
+  if (!id) return;
+  const url = `${ISSUER_URL}/credentials/revoke`;
+  setStatus('i-revoke','Revoking…','info');
+  try {
+    const r = await apiInspect('i-revoke','POST', url, {credentialId: id});
+    appendLog('i-revoke','Revoked '+short(id));
+    setStatus('i-revoke','Revoked.','success');
+  } catch(e) { appendLog('i-revoke',errMsg(e),'err'); setStatus('i-revoke',e.message,'error'); }
+}
+
+async function listIssuerKeys() {
+  setStatus('i-keys','Fetching…','info');
+  try {
+    const {keys} = await apiInspect('i-keys','GET',`${ISSUER_URL}/keys`);
+    setStatus('i-keys',`${keys.length} key(s).`,'success');
+    setResult('i-keys', makeTable(keys.map(k=>[k.purpose, short(k.did||k.keyId,44)+' ('+k.status+')'])));
+  } catch(e) { appendLog('i-keys',errMsg(e),'err'); setStatus('i-keys',e.message,'error'); }
+}
+async function rotateIssuerKey() {
+  const purpose = document.getElementById('i-key-purpose').value;
+  setStatus('i-keys','Rotating…','info');
+  try {
+    const r = await apiInspect('i-keys','POST',`${ISSUER_URL}/keys/rotate`, {purpose});
+    appendLog('i-keys','Rotated '+purpose);
+    setStatus('i-keys','Rotated.','success');
+    setResult('i-keys', makeJson(r));
+  } catch(e) { appendLog('i-keys',errMsg(e),'err'); setStatus('i-keys',e.message,'error'); }
+}
+async function revokeIssuerKey() {
+  const keyId = document.getElementById('i-key-id-revoke').value.trim();
+  if (!keyId) return;
+  setStatus('i-keys','Revoking key…','info');
+  try {
+    const r = await apiInspect('i-keys','POST',`${ISSUER_URL}/keys/revoke`, {keyId});
+    setStatus('i-keys','Key revoked.','success');
+    setResult('i-keys', makeJson(r));
+  } catch(e) { appendLog('i-keys',errMsg(e),'err'); setStatus('i-keys',e.message,'error'); }
+}
+async function getIssuerAuditLog() {
+  setStatus('i-keys','Fetching audit log…','info');
+  try {
+    const {events} = await apiInspect('i-keys','GET',`${ISSUER_URL}/keys/audit`);
+    setStatus('i-keys',`${events.length} event(s).`,'success');
+    setResult('i-keys', makeTable(events.map(e=>[e.event_type, short(e.actor||'',30)+' '+short(e.created_at||'',20)])));
+  } catch(e) { appendLog('i-keys',errMsg(e),'err'); setStatus('i-keys',e.message,'error'); }
+}
+
+async function listSchemas() {
+  setStatus('i-schema','Fetching…','info');
+  try {
+    const {schemas} = await apiInspect('i-schema','GET',`${ISSUER_URL}/schemas`);
+    setStatus('i-schema',`${schemas.length} schema(s).`,'success');
+    setResult('i-schema', makeTable(schemas.map(s=>[s.slug, s.version])));
+  } catch(e) { appendLog('i-schema',errMsg(e),'err'); setStatus('i-schema',e.message,'error'); }
+}
+async function getSchema() {
+  const slug = document.getElementById('i-schema-slug').value.trim();
+  if (!slug) return;
+  setStatus('i-schema','Fetching…','info');
+  try {
+    const r = await apiInspect('i-schema','GET',`${ISSUER_URL}/schemas/${encodeURIComponent(slug)}`);
+    setStatus('i-schema','Found.','success');
+    setResult('i-schema', makeJson(r));
+  } catch(e) { appendLog('i-schema',errMsg(e),'err'); setStatus('i-schema',e.message,'error'); }
+}
+async function registerSchema() {
+  const slug = document.getElementById('i-schema-slug').value.trim();
+  const version = document.getElementById('i-schema-ver').value.trim()||'1.0.0';
+  const raw = document.getElementById('i-schema-json').value.trim();
+  if (!slug||!raw) return;
+  let schemaJson;
+  try { schemaJson = JSON.parse(raw); } catch { setStatus('i-schema','Invalid JSON','error'); return; }
+  setStatus('i-schema','Registering…','info');
+  try {
+    const r = await apiInspect('i-schema','POST',`${ISSUER_URL}/schemas`, {slug, version, schemaJson});
+    setStatus('i-schema','Registered.','success');
+    setResult('i-schema', makeTable([['Schema ID',r.schemaId],['Slug',r.slug],['Version',r.version]]));
+  } catch(e) { appendLog('i-schema',errMsg(e),'err'); setStatus('i-schema',e.message,'error'); }
+}
+
+async function getOid4vciMetadata() {
+  setStatus('i-oid4vci','Fetching metadata…','info');
+  try {
+    const r = await apiInspect('i-oid4vci','GET',`${ISSUER_URL}/.well-known/openid-credential-issuer`);
+    setStatus('i-oid4vci','Fetched.','success');
+    setResult('i-oid4vci', makeJson(r));
+  } catch(e) { appendLog('i-oid4vci',errMsg(e),'err'); setStatus('i-oid4vci',e.message,'error'); }
+}
+async function createOid4vciOffer() {
+  const format    = document.getElementById('i-oid4vci-format').value;
+  const issuerDid = document.getElementById('i-oid4vci-issuer-id').value || undefined;
+  const employee = {};
+  document.querySelectorAll('#i-oid4vci-fields-grid input[data-key]').forEach(inp => {
+    employee[inp.dataset.key] = inp.value;
+  });
+  const schemaSlug     = document.getElementById('i-oid4vci-schema').value.trim()||undefined;
+  const schemaVersion  = document.getElementById('i-oid4vci-schema-ver').value.trim()||undefined;
+  const credentialType = document.getElementById('i-oid4vci-cred-type').value.trim()||undefined;
+  const expiresInDays  = document.getElementById('i-oid4vci-expires-days').value.trim()||undefined;
+  const expirationDate = document.getElementById('i-oid4vci-expiry-date').value||undefined;
+  const disclosableClaims = format==='sd-jwt' ? getSelectedFields('chk-io') : undefined;
+  const ttlMin = parseFloat(document.getElementById('i-oid4vci-ttl').value);
+  setStatus('i-oid4vci','Creating offer…','info');
+  try {
+    const body = {subject: employee, format: toOid4vciFormat(format)};
+    if (issuerDid)      body.issuerDid      = issuerDid;
+    if (schemaSlug)     body.schemaSlug     = schemaSlug;
+    if (schemaVersion)  body.schemaVersion  = schemaVersion;
+    if (credentialType) body.credentialType = credentialType;
+    if (expiresInDays)  body.expiresInDays  = Number(expiresInDays);
+    if (expirationDate) body.expirationDate = new Date(expirationDate).toISOString();
+    if (disclosableClaims) body.disclosableClaims = disclosableClaims;
+    if (!isNaN(ttlMin) && ttlMin > 0) body.offerTtlMs = Math.round(ttlMin * 60 * 1000);
+    const r = await apiInspect('i-oid4vci','POST',`${ISSUER_URL}/oid4vci/offer`, body);
+    appendLog('i-oid4vci','Offer: '+r.offerId);
+    setStatus('i-oid4vci','Offer created.','success');
+    showQr('i-oid4vci-qr', r.qrcode);
+    setResult('i-oid4vci', makeTable([
+      ['Offer ID', r.offerId],
+      ['Offer URI', `<a href="${r.offerUri}" target="_blank" style="font-size:.7rem">${short(r.offerUri,50)}</a>`],
+    ]));
+    onOfferCreated(r.credentialOfferUri);
+  } catch(e) { appendLog('i-oid4vci',errMsg(e),'err'); setStatus('i-oid4vci',e.message,'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// HOLDER handlers
+// ══════════════════════════════════════════════════════════════════════════
+async function listHolderDids() {
+  setStatus('h-dids','Fetching…','info');
+  try {
+    const {dids} = await apiInspect('h-dids','GET',`${HOLDER_URL}/dids`);
+    setStatus('h-dids',`${dids.length} DID(s).`,'success');
+    setResult('h-dids', makeTable(dids.map(d=>[short(d.did,44),d.name??'—'])));
+  } catch(e) { appendLog('h-dids',errMsg(e),'err'); setStatus('h-dids',e.message,'error'); }
+}
+async function createHolderDid() {
+  const name      = document.getElementById('h-did-name').value.trim();
+  const didMethod = document.getElementById('h-did-method').value;
+  const domain    = didMethod === 'did:web' ? document.getElementById('h-did-domain').value.trim() : undefined;
+  const body      = {name, didMethod, ...(domain && {domain})};
+  setStatus('h-dids','Creating…','info');
+  try {
+    const r = await apiInspect('h-dids','POST',`${HOLDER_URL}/create`, body);
+    STATE.holderDid = r.did;
+    setStatus('h-dids','Created.','success');
+    setResult('h-dids', makeTable([['DID',r.did],['Name',r.name??name]]));
+    await repopulateHolderDidPickers();
+  } catch(e) { appendLog('h-dids',errMsg(e),'err'); setStatus('h-dids',e.message,'error'); }
+}
+
+async function listHolderCredentials() {
+  setStatus('h-wallet','Fetching…','info');
+  try {
+    const {credentials} = await apiInspect('h-wallet','GET',`${HOLDER_URL}/credentials`);
+    STATE.credentialList = credentials||[];
+    setStatus('h-wallet',`${credentials.length} credential(s).`,'success');
+    setResult('h-wallet', makeTable(credentials.map(c=>[
+      `<span class="badge ${c.format==='sd-jwt'?'bdg-teal':'bdg-indigo'}">${c.format}</span>`,
+      short(c.id,42)
+    ])));
+    await repopulateCredentialPickers();
+  } catch(e) { appendLog('h-wallet',errMsg(e),'err'); setStatus('h-wallet',e.message,'error'); }
+}
+function toggleWalletStoreFields() {
+  const fmt = document.getElementById('h-store-format').value;
+  document.getElementById('h-store-vcld-wrap').style.display  = fmt === 'vc-ld'  ? '' : 'none';
+  document.getElementById('h-store-sdjwt-wrap').style.display = fmt === 'sd-jwt' ? '' : 'none';
+  document.getElementById('h-store-btn').style.display        = fmt ? '' : 'none';
+}
+
+async function storeCredential() {
+  const fmt = document.getElementById('h-store-format').value;
+  if (fmt === 'sd-jwt') {
+    const sdJwt = document.getElementById('h-store-sdjwt').value.trim();
+    if (!sdJwt) { setStatus('h-wallet','Enter an SD-JWT string.','warn'); return; }
+    setStatus('h-wallet','Storing…','info');
+    try {
+      const r = await apiInspect('h-wallet','POST',`${HOLDER_URL}/credentials`, {sdJwt});
+      setStatus('h-wallet','Stored.','success');
+      appendLog('h-wallet','Stored SD-JWT: '+short(r.id));
+      await repopulateCredentialPickers();
+    } catch(e) { appendLog('h-wallet',errMsg(e),'err'); setStatus('h-wallet',e.message,'error'); }
+  } else {
+    const raw = document.getElementById('h-store-vc').value.trim();
+    if (!raw) { setStatus('h-wallet','Enter a VC-LD JSON.','warn'); return; }
+    let vcObj;
+    try { vcObj = JSON.parse(raw); } catch { setStatus('h-wallet','Invalid JSON','error'); return; }
+    setStatus('h-wallet','Storing…','info');
+    try {
+      const r = await apiInspect('h-wallet','POST',`${HOLDER_URL}/credentials`, {verifiableCredential: vcObj});
+      setStatus('h-wallet','Stored.','success');
+      appendLog('h-wallet','Stored: '+short(r.id));
+      await repopulateCredentialPickers();
+    } catch(e) { appendLog('h-wallet',errMsg(e),'err'); setStatus('h-wallet',e.message,'error'); }
+  }
+}
+
+async function getHolderCredential() {
+  const id = document.getElementById('h-get-cred').value;
+  if (!id) { setStatus('h-get-cred','Select a credential.','warn'); return; }
+  setStatus('h-get-cred','Fetching…','info');
+  try {
+    const r = await apiInspect('h-get-cred','GET',`${HOLDER_URL}/credentials/${encodeURIComponent(id)}`);
+    setStatus('h-get-cred',`Found: ${r.format}`,'success');
+    setResult('h-get-cred', `<pre>${JSON.stringify(r,null,2)}</pre>`);
+  } catch(e) { appendLog('h-get-cred',errMsg(e),'err'); setStatus('h-get-cred',e.message,'error'); }
+}
+
+async function createPresentation() {
+  const credentialId = document.getElementById('h-present-cred').value;
+  const challenge    = document.getElementById('h-present-challenge').value.trim();
+  const domain       = document.getElementById('h-present-domain').value.trim()||'verifier.example.org';
+  if (!credentialId||!challenge) { setStatus('h-present','Select credential and enter challenge.','warn'); return; }
+  const cred = STATE.credentialList.find(c=>c.id===credentialId);
+  const disclosedFields = cred?.format==='sd-jwt' ? getSelectedFields('chk-hp') : undefined;
+  setStatus('h-present','Signing VP…','info');
+  try {
+    const body = {credentialId, challenge, domain};
+    if (disclosedFields) body.disclosedFields = disclosedFields;
+    const r = await apiInspect('h-present','POST',`${HOLDER_URL}/present`, body);
+    setStatus('h-present','Presentation created.','success');
+    appendLog('h-present','Format: '+r.format);
+    if (r.verifiablePresentation) {
+      onVpCreated(r.verifiablePresentation);
+      setResult('h-present', makeTable([['Format','VC-LD'],['Holder',short(r.verifiablePresentation.holder)]]));
+    } else {
+      document.getElementById('v-verify-sdjwt').value = r.sdJwt||'';
+      setResult('h-present', makeTable([['Format','SD-JWT'],['Preview',short(r.sdJwt,60)]]));
+    }
+  } catch(e) { appendLog('h-present',errMsg(e),'err'); setStatus('h-present',e.message,'error'); }
+}
+
+async function listHolderKeys() {
+  setStatus('h-keys','Fetching…','info');
+  try {
+    const {keys} = await apiInspect('h-keys','GET',`${HOLDER_URL}/keys`);
+    setStatus('h-keys',`${keys.length} key(s).`,'success');
+    setResult('h-keys', makeTable(keys.map(k=>[k.purpose, short(k.did||k.keyId,44)+' ('+k.status+')'])));
+  } catch(e) { appendLog('h-keys',errMsg(e),'err'); setStatus('h-keys',e.message,'error'); }
+}
+async function rotateHolderKey() {
+  const purpose = document.getElementById('h-key-purpose').value;
+  setStatus('h-keys','Rotating…','info');
+  try {
+    const r = await apiInspect('h-keys','POST',`${HOLDER_URL}/keys/rotate`, {purpose});
+    setStatus('h-keys','Rotated.','success');
+    setResult('h-keys', makeJson(r));
+  } catch(e) { appendLog('h-keys',errMsg(e),'err'); setStatus('h-keys',e.message,'error'); }
+}
+
+async function receiveViaOid4vci() {
+  const offerUri  = document.getElementById('h-oid4vci-uri').value.trim();
+  const format    = document.getElementById('h-oid4vci-format').value;
+  const holderDid = document.getElementById('h-oid4vci-did').value || undefined;
+  if (!offerUri) { setStatus('h-oid4vci','Enter offer URI.','warn'); return; }
+  setStatus('h-oid4vci','Receiving…','info');
+  try {
+    const body = {offerUri, format: toOid4vciFormat(format)};
+    if (holderDid) body.holderDid = holderDid;
+    const r = await apiInspect('h-oid4vci','POST',`${HOLDER_URL}/oid4vci/receive`, body);
+    appendLog('h-oid4vci','Stored: '+short(r.credentialId));
+    setStatus('h-oid4vci','Credential stored.','success');
+    setResult('h-oid4vci', makeTable([['ID',r.credentialId],['Format',r.format],['Issuer',short(r.issuer)]]));
+    await repopulateCredentialPickers();
+  } catch(e) { appendLog('h-oid4vci',errMsg(e),'err'); setStatus('h-oid4vci',e.message,'error'); }
+}
+
+// Fetch the OID4VP request JWT in-browser, decode the Presentation Definition,
+// display the constraints, and auto-select a matching wallet credential.
+async function fetchOid4vpConstraints() {
+  const requestUri = document.getElementById('h-oid4vp-uri').value.trim();
+  if (!requestUri) { setStatus('h-oid4vp', 'Enter a request URI first.', 'warn'); return; }
+
+  setStatus('h-oid4vp', 'Fetching constraints…', 'info');
+  document.getElementById('h-oid4vp-pd-panel').style.display = 'none';
+
+  try {
+    // Resolve the JWT fetch URL from openid4vp:// scheme or use directly
+    let fetchUrl = requestUri;
+    if (requestUri.startsWith('openid4vp://')) {
+      const params = new URLSearchParams(requestUri.split('?')[1] ?? '');
+      fetchUrl = params.get('request_uri');
+      if (!fetchUrl) throw new Error('request_uri not found in openid4vp:// URI');
+    }
+
+    const jwtRes = await fetch(fetchUrl);
+    if (!jwtRes.ok) throw new Error(`Failed to fetch request JWT: ${jwtRes.status}`);
+    const jwt = await jwtRes.text();
+
+    // Decode JWT payload (base64url middle segment — no crypto needed to read)
+    const parts = jwt.split('.');
+    if (parts.length < 2) throw new Error('Invalid JWT');
+    const seg = parts[1];
+    const pad = seg.length % 4 ? seg + '='.repeat(4 - seg.length % 4) : seg;
+    const payload = JSON.parse(atob(pad.replace(/-/g, '+').replace(/_/g, '/')));
+
+    const pd = payload.presentation_definition;
+    if (!pd) throw new Error('No presentation_definition in request JWT');
+
+    // Extract constraints from first input_descriptor
+    const descriptor  = pd.input_descriptors?.[0] ?? {};
+    const fields      = descriptor.constraints?.fields ?? [];
+    const formatKeys  = Object.keys(descriptor.format ?? {});
+    const formatHint  = formatKeys[0] ?? null;
+    const limitDisc   = descriptor.constraints?.limit_disclosure === 'required';
+
+    const requiredTypes  = [];
+    let   issuerDid      = null;
+    const requiredClaims = [];
+
+    for (const field of fields) {
+      const paths = field.path ?? [];
+      if (paths.includes('$.type') && field.filter?.contains?.const) {
+        requiredTypes.push(field.filter.contains.const);
+      } else if (paths.includes('$.issuer') || paths.includes('$.issuer.id')) {
+        if (field.filter?.const) issuerDid = field.filter.const;
+      } else {
+        for (const p of paths) {
+          const m = p.match(/^\$\.credentialSubject\.(\w+)$/);
+          if (m) { requiredClaims.push(m[1]); break; }
+        }
+      }
+    }
+
+    // Render the constraints table
+    document.getElementById('h-oid4vp-pd-content').innerHTML = makeTable([
+      ['Purpose',          pd.purpose ?? pd.name ?? '—'],
+      ['Credential Type',  requiredTypes.join(', ') || '(any)'],
+      ['Issuer DID',       issuerDid ? short(issuerDid, 50) : '(any)'],
+      ['Format',           formatHint ?? '(any)'],
+      ['Required Claims',  requiredClaims.join(', ') || '(none)'],
+      ['Limit Disclosure', limitDisc ? 'Yes (SD-JWT required)' : 'No'],
+    ]);
+    document.getElementById('h-oid4vp-pd-panel').style.display = '';
+
+    // Auto-match a credential in the wallet against the constraints
+    const preferSdJwt = limitDisc || formatHint === 'vc+sd-jwt';
+    const preferVcLd  = formatHint === 'ldp_vc';
+    let matched = null;
+
+    for (const cred of STATE.credentialList) {
+      if (preferSdJwt && cred.format !== 'sd-jwt') continue;
+      if (preferVcLd  && cred.format !== 'vc-ld')  continue;
+
+      if (cred.format === 'vc-ld') {
+        const credTypes = Array.isArray(cred.vc?.type) ? cred.vc.type : [];
+        if (requiredTypes.length && !requiredTypes.every(t => credTypes.includes(t))) continue;
+        const credIssuer = typeof cred.vc?.issuer === 'string' ? cred.vc.issuer : cred.vc?.issuer?.id;
+        if (issuerDid && credIssuer !== issuerDid) continue;
+      }
+
+      matched = cred; break;
+    }
+
+    if (matched) {
+      document.getElementById('h-oid4vp-cred').value = matched.id;
+      onOid4vpCredChange(); // rebuilds SD-JWT disclose grid if needed
+      if (matched.format === 'sd-jwt' && requiredClaims.length) {
+        // tick only the claims the verifier requires; uncheck the rest
+        applyRequiredClaimsToDisclosure('chk-hv', requiredClaims);
+      }
+      appendLog('h-oid4vp', `Auto-matched: ${short(matched.id, 40)} (${matched.format})`);
+      setStatus('h-oid4vp', 'Constraints loaded — credential auto-selected.', 'success');
+    } else {
+      setStatus('h-oid4vp', 'Constraints loaded — no matching credential in wallet.', 'warn');
+    }
+  } catch (e) {
+    setStatus('h-oid4vp', 'Error: ' + e.message, 'error');
+    appendLog('h-oid4vp', e.message, 'err');
+  }
+}
+
+async function initiateOid4vpVcLd() {
+  const requestUri  = document.getElementById('h-oid4vp-uri').value.trim();
+  const credentialId = document.getElementById('h-oid4vp-cred').value || undefined;
+  if (!requestUri) { setStatus('h-oid4vp','Enter request URI.','warn'); return; }
+  setStatus('h-oid4vp','Initiating…','info');
+  try {
+    const body = {requestUri};
+    if (credentialId) body.credentialId = credentialId;
+    const r = await apiInspect('h-oid4vp','POST',`${HOLDER_URL}/oid4vp/initiate`, body);
+    appendLog('h-oid4vp','Submitted state: '+r.state);
+    setStatus('h-oid4vp','VP submitted.','success');
+    setResult('h-oid4vp', makeTable([['State',r.state],['Holder',short(r.holder)]]));
+  } catch(e) { appendLog('h-oid4vp',errMsg(e),'err'); setStatus('h-oid4vp',e.message,'error'); }
+}
+async function initiateOid4vpSdJwt() {
+  const requestUri    = document.getElementById('h-oid4vp-uri').value.trim();
+  const credentialId  = document.getElementById('h-oid4vp-cred').value || undefined;
+  const disclosedFields = getSelectedFields('chk-hv');
+  if (!requestUri) { setStatus('h-oid4vp','Enter request URI.','warn'); return; }
+  setStatus('h-oid4vp','Initiating SD-JWT presentation…','info');
+  try {
+    const body = {requestUri, disclosedFields};
+    if (credentialId) body.credentialId = credentialId;
+    const r = await apiInspect('h-oid4vp','POST',`${HOLDER_URL}/oid4vp/initiate-sdjwt`, body);
+    appendLog('h-oid4vp','Submitted state: '+r.state+' ('+r.disclosedFields?.length+' fields)');
+    setStatus('h-oid4vp','SD-JWT VP submitted.','success');
+    setResult('h-oid4vp', makeTable([['State',r.state],['Disclosed',r.disclosedFields?.join(', ')]]));
+  } catch(e) { appendLog('h-oid4vp',errMsg(e),'err'); setStatus('h-oid4vp',e.message,'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// VERIFIER handlers
+// ══════════════════════════════════════════════════════════════════════════
+async function listVerifierDids() {
+  setStatus('v-dids','Fetching…','info');
+  try {
+    const {dids} = await apiInspect('v-dids','GET',`${VERIFIER_URL}/dids`);
+    setStatus('v-dids',`${dids.length} DID(s).`,'success');
+    setResult('v-dids', makeTable(dids.map(d=>[short(d.did,44),d.name??'—'])));
+  } catch(e) { appendLog('v-dids',errMsg(e),'err'); setStatus('v-dids',e.message,'error'); }
+}
+async function createVerifierDid() {
+  const name      = document.getElementById('v-did-name').value.trim();
+  const didMethod = document.getElementById('v-did-method').value;
+  const domain    = didMethod === 'did:web' ? document.getElementById('v-did-domain').value.trim() : undefined;
+  const body      = {name, didMethod, ...(domain && {domain})};
+  setStatus('v-dids','Creating…','info');
+  try {
+    const r = await apiInspect('v-dids','POST',`${VERIFIER_URL}/create`, body);
+    STATE.verifierDid = r.did;
+    setStatus('v-dids','Created.','success');
+    setResult('v-dids', makeTable([['DID',r.did],['Name',r.name??name]]));
+  } catch(e) { appendLog('v-dids',errMsg(e),'err'); setStatus('v-dids',e.message,'error'); }
+}
+
+async function issueChallenge() {
+  setStatus('v-challenge','Issuing challenge…','info');
+  try {
+    const r = await apiInspect('v-challenge','POST',`${VERIFIER_URL}/challenge`, {});
+    appendLog('v-challenge','Challenge: '+r.challenge);
+    setStatus('v-challenge','Challenge issued.','success');
+    setResult('v-challenge', makeTable([['Challenge',r.challenge],['Domain',r.domain]]));
+    onChallengeIssued(r.challenge, r.domain);
+  } catch(e) { appendLog('v-challenge',errMsg(e),'err'); setStatus('v-challenge',e.message,'error'); }
+}
+
+async function verifyVcLdVP() {
+  const raw = document.getElementById('v-verify-vp').value.trim();
+  if (!raw) { setStatus('v-verify','Paste a VP first.','warn'); return; }
+  let vp;
+  try { vp = JSON.parse(raw); } catch { setStatus('v-verify','Invalid JSON','error'); return; }
+  setStatus('v-verify','Verifying…','info');
+  try {
+    const r = await apiInspect('v-verify','POST',`${VERIFIER_URL}/verify`, {verifiablePresentation: vp});
+    setStatus('v-verify', r.verified ? 'VERIFIED ✓' : 'FAILED', r.verified?'success':'error');
+    renderVerifyResult('v-verify-result', {...r, format:'vc-ld'});
+  } catch(e) { appendLog('v-verify',errMsg(e),'err'); setStatus('v-verify',e.message,'error'); }
+}
+async function verifySdJwt() {
+  const sdJwt = document.getElementById('v-verify-sdjwt').value.trim();
+  if (!sdJwt) { setStatus('v-verify','Paste SD-JWT string first.','warn'); return; }
+  setStatus('v-verify','Verifying SD-JWT…','info');
+  try {
+    const r = await apiInspect('v-verify','POST',`${VERIFIER_URL}/verify`, {sdJwt});
+    setStatus('v-verify', r.verified ? 'VERIFIED ✓' : 'FAILED', r.verified?'success':'error');
+    if (r.verified) {
+      document.getElementById('v-verify-result').innerHTML = makeTable([
+        ['Format','SD-JWT'],
+        ['Issuer',short(r.issuer)],
+        ['Subject',short(r.subject)],
+        ...Object.entries(r.disclosedClaims||{}).map(([k,v])=>[k,v]),
+      ]) + trustBanner(r);
+    } else {
+      document.getElementById('v-verify-result').innerHTML =
+        `<div class="sb sb-error">FAILED: ${r.error??'Unknown'}</div>`;
+    }
+  } catch(e) { appendLog('v-verify',errMsg(e),'err'); setStatus('v-verify',e.message,'error'); }
+}
+
+async function getOid4vpMetadata() {
+  setStatus('v-oid4vp','Fetching metadata…','info');
+  try {
+    const r = await apiInspect('v-oid4vp','GET',`${VERIFIER_URL}/.well-known/openid-configuration`);
+    setStatus('v-oid4vp','Fetched.','success');
+    setResult('v-oid4vp', makeJson(r));
+  } catch(e) { appendLog('v-oid4vp',errMsg(e),'err'); setStatus('v-oid4vp',e.message,'error'); }
+}
+async function createOid4vpRequest() {
+  setStatus('v-oid4vp','Creating request…','info');
+  try {
+    const credentialType   = document.getElementById('v-oid4vp-cred-type').value.trim() || undefined;
+    const issuerDid        = document.getElementById('v-oid4vp-issuer-did').value || undefined;
+    const credentialFormat = document.getElementById('v-oid4vp-format').value || undefined;
+    const reqClaimsRaw     = document.getElementById('v-oid4vp-req-claims').value.trim();
+    const requiredClaims   = reqClaimsRaw ? reqClaimsRaw.split(',').map(s => s.trim()).filter(Boolean) : undefined;
+    const schemaUrl        = document.getElementById('v-oid4vp-schema-url').value.trim() || undefined;
+
+    const body = {};
+    if (credentialType)        body.credentialType   = credentialType;
+    if (issuerDid)             body.issuerDid        = issuerDid;
+    if (credentialFormat)      body.credentialFormat = credentialFormat;
+    if (requiredClaims?.length) body.requiredClaims  = requiredClaims;
+    if (schemaUrl)             body.schemaUrl        = schemaUrl;
+
+    const r = await apiInspect('v-oid4vp','POST',`${VERIFIER_URL}/oid4vp/request`, body);
+    appendLog('v-oid4vp','State: '+r.state);
+    setStatus('v-oid4vp','Request created.','success');
+    showQr('v-oid4vp-qr', r.qrcode);
+    document.getElementById('v-oid4vp-state').value = r.state;
+    setResult('v-oid4vp', makeTable([
+      ['Request ID',      r.requestId],
+      ['State',           r.state],
+      ['Request URI',     short(r.requestUri, 50)],
+      ['Credential Type', credentialType  || '(any)'],
+      ['Format',          credentialFormat || '(any)'],
+      ['Required Claims', requiredClaims?.join(', ') || '(none)'],
+    ]));
+    onVpRequestCreated(r.state, r.requestUri, r.openid4vpUri);
+  } catch(e) { appendLog('v-oid4vp',errMsg(e),'err'); setStatus('v-oid4vp',e.message,'error'); }
+}
+async function pollOid4vpResult() {
+  const state = document.getElementById('v-oid4vp-state').value.trim();
+  if (!state) { setStatus('v-oid4vp','Enter a state value.','warn'); return; }
+  setStatus('v-oid4vp','Polling…','info');
+  try {
+    const r = await apiInspect('v-oid4vp','GET',`${VERIFIER_URL}/oid4vp/result/${state}`);
+    if (r.status==='pending') { setStatus('v-oid4vp','Still pending…','info'); return; }
+    setStatus('v-oid4vp', r.verified?'VERIFIED ✓':'FAILED', r.verified?'success':'error');
+    renderVerifyResult('v-oid4vp-result', r);
+  } catch(e) { appendLog('v-oid4vp',errMsg(e),'err'); setStatus('v-oid4vp',e.message,'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// FLOW handlers
+// ══════════════════════════════════════════════════════════════════════════
+function toggleFlowASteps() {
+  const fmt = document.getElementById('fa-format').value;
+  document.getElementById('fa-steps-vcld').style.display  = fmt === 'vc-ld'    ? '' : 'none';
+  document.getElementById('fa-steps-sdjwt').style.display = fmt === 'sd-jwt' ? '' : 'none';
+  toggleFlowASD();
+}
+
+async function runFlowA() {
+  const btn = document.getElementById('btn-flow-a');
+  btn.disabled = true;
+  setStatus('fa','Starting Flow A…','info');
+  document.getElementById('fa-log').style.display='block';
+  document.getElementById('fa-result').innerHTML='';
+  document.getElementById('fa-qr').style.display='none';
+  const apiPane = document.getElementById('fa-api');
+  if (apiPane) { apiPane.innerHTML=''; apiPane.style.display='none'; }
+  const format  = document.getElementById('fa-format').value;
+  const isSdJwt = format === 'sd-jwt';
+  const subject = {};
+  document.querySelectorAll('#fa-fields-grid input[data-key]').forEach(inp => { subject[inp.dataset.key] = inp.value; });
+  const credentialType = document.getElementById('fa-cred-type').value.trim() || undefined;
+  const schemaSlug     = document.getElementById('fa-schema').value.trim() || undefined;
+  const schemaVersion  = document.getElementById('fa-schema-ver').value.trim() || undefined;
+  const issuerDid      = document.getElementById('fa-issuer-id').value || undefined;
+  try {
+    const holderDid = STATE.holderDid;
+    if (!holderDid) throw new Error('Run "Initialize All" first');
+    appendLog('fa','Using holder DID: '+short(holderDid));
+
+    const offerBody = {format: toOid4vciFormat(format), subject};
+    if (issuerDid)       offerBody.issuerDid      = issuerDid;
+    if (credentialType) offerBody.credentialType = credentialType;
+    if (schemaSlug)     offerBody.schemaSlug     = schemaSlug;
+    if (schemaVersion)  offerBody.schemaVersion  = schemaVersion;
+    if (isSdJwt) offerBody.disclosableClaims = getSelectedFields('chk-fa');
+    const faTtlMin = parseFloat(document.getElementById('fa-ttl').value);
+    if (!isNaN(faTtlMin) && faTtlMin > 0) offerBody.offerTtlMs = Math.round(faTtlMin * 60 * 1000);
+
+    appendLog('fa',`Creating OID4VCI offer (${format})…`);
+    setStatus('fa','Creating offer…','info');
+    const offer = await apiInspectAppend('fa','POST',`${ISSUER_URL}/oid4vci/offer`, offerBody);
+    showQr('fa-qr', offer.qrcode);
+    appendLog('fa','Offer created: '+offer.offerId);
+
+    appendLog('fa','Holder receiving credential…');
+    setStatus('fa','Receiving credential…','info');
+    const rx = await apiInspectAppend('fa','POST',`${HOLDER_URL}/oid4vci/receive`, {offerUri:offer.credentialOfferUri, format: toOid4vciFormat(format)});
+    appendLog('fa','Stored: '+short(rx.credentialId));
+
+    appendLog('fa','Listing wallet…');
+    const {credentials} = await apiInspectAppend('fa','GET',`${HOLDER_URL}/credentials`);
+    await repopulateCredentialPickers();
+
+    const label = isSdJwt ? 'SD-JWT' : 'VC-LD';
+    setStatus('fa',`Flow A complete! ${label} credential in wallet.`,'success');
+    document.getElementById('fa-result').innerHTML = makeTable([
+      ['Format', rx.format],
+      ['Credential ID', rx.credentialId],
+      ['Issuer', short(rx.issuer)],
+      ['Wallet size', credentials.length+' credential(s)'],
+    ]);
+  } catch(e) {
+    appendLog('fa',errMsg(e),'err');
+    setStatus('fa','Error: '+e.message,'error');
+  }
+  btn.disabled = false;
+}
+
+function toggleFlowBSteps() {
+  const fmt = document.getElementById('fb-format').value;
+  const isSdJwt = fmt === 'sd-jwt';
+  document.getElementById('fb-steps-vcld').style.display    = isSdJwt ? 'none' : '';
+  document.getElementById('fb-steps-sdjwt').style.display   = isSdJwt ? ''     : 'none';
+  document.getElementById('fb-sdfields-wrap').style.display = isSdJwt ? ''     : 'none';
+}
+
+function onFlowBCredChange() {
+  const id   = document.getElementById('fb-cred').value;
+  const cred = STATE.credentialList.find(c => c.id === id);
+  const fmtEl = document.getElementById('fb-format');
+  if (cred) {
+    fmtEl.value = cred.format === 'sd-jwt' ? 'sd-jwt' : 'vc-ld';
+    if (cred.format === 'sd-jwt') {
+      const fields = parseSdJwtFields(cred.sdJwt);
+      buildFieldSelector('fb-sdgrid', 'chk-fb', fields);
+    }
+    // Auto-populate PD constraint fields from credential metadata
+    const credTypes = cred.vc?.type ?? [];
+    const customType = credTypes.find(t => t !== 'VerifiableCredential');
+    const credTypeEl = document.getElementById('fb-cred-type');
+    if (credTypeEl && customType) credTypeEl.value = customType;
+    const issuerEl = document.getElementById('fb-issuer-did');
+    if (issuerEl && cred.vc?.issuer) {
+      issuerEl.value = typeof cred.vc.issuer === 'string' ? cred.vc.issuer : (cred.vc.issuer?.id ?? '');
+    }
+  } else {
+    fmtEl.value = 'vc-ld';
+  }
+  toggleFlowBSteps();
+}
+
+async function runFlowB() {
+  const btn = document.getElementById('btn-flow-b');
+  btn.disabled = true;
+  setStatus('fb','Starting Flow B…','info');
+  document.getElementById('fb-log').style.display='block';
+  document.getElementById('fb-result').innerHTML='';
+  document.getElementById('fb-vp-qr').style.display='none';
+  const apiPane = document.getElementById('fb-api');
+  if (apiPane) { apiPane.innerHTML=''; apiPane.style.display='none'; }
+
+  const selectedCredId = document.getElementById('fb-cred').value;
+  if (!selectedCredId) {
+    setStatus('fb','Select a credential from the dropdown first.','warn');
+    btn.disabled = false; return;
+  }
+  const format  = document.getElementById('fb-format').value;
+  const isSdJwt = format === 'sd-jwt';
+
+  let disclosedFields = [];
+  if (isSdJwt) {
+    disclosedFields = getSelectedFields('chk-fb');
+    if (disclosedFields.length === 0) {
+      setStatus('fb','Select at least one field to disclose.','warn');
+      btn.disabled = false; return;
+    }
+  }
+
+  try {
+    if (!STATE.holderDid) throw new Error('Run "Initialize All" first');
+
+    // ── Step 1: Confirm selected credential still in wallet ────────────────
+    appendLog('fb','Checking wallet for selected credential…');
+    setStatus('fb','Checking wallet…','info');
+    const {credentials} = await apiInspectAppend('fb','GET',`${HOLDER_URL}/credentials`);
+    const match = credentials.find(c => c.id === selectedCredId);
+    if (!match) {
+      throw new Error('Selected credential no longer in wallet — run Flow A first');
+    }
+    appendLog('fb',`Found: ${short(match.id)}`);
+
+    // ── Step 2: OID4VP request with dynamic Presentation Definition ───────
+    appendLog('fb','Creating OID4VP request on verifier…');
+    setStatus('fb','Creating VP request…','info');
+    const pdCredType     = document.getElementById('fb-cred-type').value.trim() || undefined;
+    const pdIssuerDid    = document.getElementById('fb-issuer-did').value.trim() || undefined;
+    const pdReqClaimsRaw = document.getElementById('fb-req-claims').value.trim();
+    const pdReqClaims    = pdReqClaimsRaw ? pdReqClaimsRaw.split(',').map(s => s.trim()).filter(Boolean) : undefined;
+    const pdFormat       = isSdJwt ? 'vc+sd-jwt' : 'ldp_vc';
+
+    const pdBody = {credentialFormat: pdFormat};
+    if (pdCredType)           pdBody.credentialType  = pdCredType;
+    if (pdIssuerDid)          pdBody.issuerDid       = pdIssuerDid;
+    if (pdReqClaims?.length)  pdBody.requiredClaims  = pdReqClaims;
+
+    const vpReq = await apiInspectAppend('fb','POST',`${VERIFIER_URL}/oid4vp/request`, pdBody);
+    showQr('fb-vp-qr', vpReq.qrcode);
+    appendLog('fb','VP request state: '+vpReq.state);
+
+    // ── Step 3: Holder presents ────────────────────────────────────────────
+    if (isSdJwt) {
+      appendLog('fb','Presenting selected SD-JWT fields: ['+disclosedFields.join(',')+']');
+      setStatus('fb','Presenting ('+disclosedFields.length+' fields)…','info');
+      await apiInspectAppend('fb','POST',`${HOLDER_URL}/oid4vp/initiate-sdjwt`, {requestUri: vpReq.requestUri, disclosedFields});
+    } else {
+      appendLog('fb','Presenting VC-LD via OID4VP…');
+      setStatus('fb','Presenting VC-LD…','info');
+      await apiInspectAppend('fb','POST',`${HOLDER_URL}/oid4vp/initiate`, {requestUri: vpReq.requestUri});
+    }
+    appendLog('fb','Presentation submitted — polling for result…');
+
+    // ── Step 4: Poll verifier ──────────────────────────────────────────────
+    setStatus('fb','Waiting for verifier…','info');
+    startPoll(
+      `${VERIFIER_URL}/oid4vp/result/${vpReq.state}`,
+      result => {
+        appendLog('fb','Result received. Verified: '+result.verified);
+        const label = isSdJwt ? 'SD-JWT' : 'VC-LD';
+        setStatus('fb', result.verified ? `Flow B complete! ${label} VP verified.` : 'Verification failed.',
+                  result.verified ? 'success' : 'error');
+        renderVerifyResult('fb-result', result, disclosedFields);
+        btn.disabled = false;
+        repopulateCredentialPickers();
+      },
+      err => {
+        appendLog('fb','Poll error: '+err.message,'err');
+        setStatus('fb','Poll error: '+err.message,'error');
+        btn.disabled = false;
+      }
+    );
+  } catch(e) {
+    appendLog('fb',errMsg(e),'err');
+    setStatus('fb','Error: '+e.message,'error');
+    btn.disabled = false;
+  }
+}
+
+async function runFlowC() {
+  const btn = document.getElementById('btn-flow-c');
+  btn.disabled = true;
+  setStatus('fc','Starting Flow C…','info');
+  document.getElementById('fc-log').style.display='block';
+  document.getElementById('fc-result').innerHTML='';
+  const apiPane = document.getElementById('fc-api');
+  if (apiPane) { apiPane.innerHTML=''; apiPane.style.display='none'; }
+  const subject = {};
+  document.querySelectorAll('#fc-fields-grid input[data-key]').forEach(inp => { subject[inp.dataset.key] = inp.value; });
+  const credentialType = document.getElementById('fc-cred-type').value.trim() || undefined;
+  const schemaSlug     = document.getElementById('fc-schema').value.trim() || undefined;
+  const schemaVersion  = document.getElementById('fc-schema-ver').value.trim() || undefined;
+  try {
+    const holderDid = STATE.holderDid;
+    if (!holderDid) throw new Error('Run "Initialize All" first');
+
+    appendLog('fc','Issuing VC-LD credential directly…');
+    setStatus('fc','Issuing VC-LD…','info');
+    const issueBody = {holderDid, subject, format:'vc-ld'};
+    if (credentialType) issueBody.credentialType = credentialType;
+    if (schemaSlug)     issueBody.schemaSlug     = schemaSlug;
+    if (schemaVersion)  issueBody.schemaVersion  = schemaVersion;
+    const issued = await apiInspectAppend('fc','POST',`${ISSUER_URL}/issue`, issueBody);
+    const vc = issued.verifiableCredential;
+    if (!vc) throw new Error('No verifiableCredential in response');
+    appendLog('fc','Issued: '+short(vc.id));
+
+    appendLog('fc','Storing in holder wallet…');
+    await apiInspectAppend('fc','POST',`${HOLDER_URL}/credentials`, {verifiableCredential: vc});
+    appendLog('fc','Stored in wallet.');
+
+    appendLog('fc','Requesting challenge from verifier…');
+    setStatus('fc','Getting challenge…','info');
+    const ch = await apiInspectAppend('fc','POST',`${VERIFIER_URL}/challenge`, {});
+    appendLog('fc','Challenge: '+short(ch.challenge));
+
+    appendLog('fc','Holder signing VP…');
+    setStatus('fc','Signing VP…','info');
+    const pres = await apiInspectAppend('fc','POST',`${HOLDER_URL}/present`, {
+      credentialId: vc.id, challenge: ch.challenge, domain: ch.domain
+    });
+    appendLog('fc','VP signed.');
+
+    appendLog('fc','Verifier verifying VP…');
+    setStatus('fc','Verifying…','info');
+    const result = await apiInspectAppend('fc','POST',`${VERIFIER_URL}/verify`, {verifiablePresentation: pres.verifiablePresentation});
+    appendLog('fc','Verified: '+result.verified);
+    setStatus('fc', result.verified ? 'Flow C complete! VP verified.' : 'Verification failed.', result.verified?'success':'error');
+    renderVerifyResult('fc-result', {...result, format:'vc-ld'});
+    await repopulateCredentialPickers();
+  } catch(e) {
+    appendLog('fc',errMsg(e),'err');
+    setStatus('fc','Error: '+e.message,'error');
+  }
+  btn.disabled = false;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// REGISTRY handlers  (public routes use plain fetch; write routes use apiInspect)
+// ══════════════════════════════════════════════════════════════════════════
+async function regPublicGet(sid, url) {
+  const pane = document.getElementById(`${sid}-api`);
+  if (pane) {
+    pane.style.display = 'block';
+    pane.innerHTML =
+      `<div class="api-req"><div class="api-label">Request</div>` +
+      `<span class="api-meth api-get">GET</span><span class="api-url">${url}</span></div>` +
+      `<div class="api-res api-wait" id="${sid}-api-res" style="padding:9px 13px">Waiting for response…</div>`;
+  }
+  const res  = await fetch(url);
+  const data = await res.json();
+  const ok   = res.status >= 200 && res.status < 300;
+  const r    = document.getElementById(`${sid}-api-res`);
+  if (r) {
+    r.className = 'api-res';
+    r.innerHTML = `<div class="api-label">Response</div>` +
+      `<span class="api-st ${ok?'api-ok':'api-err'}">${res.status} ${ok?'OK':'Error'}</span>` +
+      `<pre class="api-body">${JSON.stringify(data,null,2)}</pre>`;
+  }
+  if (!ok) throw Object.assign(new Error(data.error||'Request failed'), {data});
+  return data;
+}
+
+async function regDelete(sid, url) {
+  const pane = document.getElementById(`${sid}-api`);
+  if (pane) {
+    pane.style.display = 'block';
+    pane.innerHTML =
+      `<div class="api-req"><div class="api-label">Request</div>` +
+      `<span class="api-meth api-delete">DELETE</span><span class="api-url">${url}</span></div>` +
+      `<div class="api-res api-wait" id="${sid}-api-res" style="padding:9px 13px">Waiting for response…</div>`;
+  }
+  const res  = await fetch(url, {method:'DELETE', headers:authHeaders()});
+  const data = await res.json();
+  const ok   = res.status >= 200 && res.status < 300;
+  const r    = document.getElementById(`${sid}-api-res`);
+  if (r) {
+    r.className = 'api-res';
+    r.innerHTML = `<div class="api-label">Response</div>` +
+      `<span class="api-st ${ok?'api-ok':'api-err'}">${res.status} ${ok?'OK':'Error'}</span>` +
+      `<pre class="api-body">${JSON.stringify(data,null,2)}</pre>`;
+  }
+  if (!ok) throw Object.assign(new Error(data.error||'Request failed'), {data});
+  return data;
+}
+
+async function regListDids() {
+  setStatus('reg-dids','Fetching…','info');
+  try {
+    const rows = await regPublicGet('reg-dids', `${REGISTRY_URL}/registry/dids`);
+    setStatus('reg-dids',`${rows.length} DID(s).`,'success');
+    setResult('reg-dids', rows.length
+      ? makeTable(rows.map(r => [`<span class="badge bdg-indigo">${r.role}</span> ${short(r.did,44)}`, r.did_method]))
+      : '<div class="sb sb-idle">No DIDs registered.</div>');
+  } catch(e) { setStatus('reg-dids',e.message,'error'); }
+}
+
+async function regListSchemas() {
+  setStatus('reg-schemas','Fetching…','info');
+  try {
+    const rows = await regPublicGet('reg-schemas', `${REGISTRY_URL}/registry/schemas`);
+    setStatus('reg-schemas',`${rows.length} schema(s).`,'success');
+    setResult('reg-schemas', rows.length
+      ? makeTable(rows.map(r => [r.slug, `v${r.version} — ${short(r.schema_id,40)}`]))
+      : '<div class="sb sb-idle">No schemas registered.</div>');
+  } catch(e) { setStatus('reg-schemas',e.message,'error'); }
+}
+
+async function regListRevocations() {
+  setStatus('reg-revocations','Fetching…','info');
+  try {
+    const rows = await regPublicGet('reg-revocations', `${REGISTRY_URL}/registry/cred-revocations`);
+    setStatus('reg-revocations',`${rows.length} status list(s).`,'success');
+    setResult('reg-revocations', rows.length
+      ? makeTable(rows.map(r => [r.purpose, `${r.next_index}/${r.list_size} slots — ${short(r.list_id,36)}`]))
+      : '<div class="sb sb-idle">No status lists found.</div>');
+  } catch(e) { setStatus('reg-revocations',e.message,'error'); }
+}
+
+async function regListAccreditations() {
+  setStatus('reg-accred','Fetching…','info');
+  try {
+    const rows = await regPublicGet('reg-accred', `${REGISTRY_URL}/registry/accreditations`);
+    setStatus('reg-accred',`${rows.length} accreditation(s).`,'success');
+    setResult('reg-accred', rows.length
+      ? makeTable(rows.map(r => [
+          `#${r.id} ${r.schema_slug}`,
+          `${r.trust_level} — ${short(r.issuer_did,38)}`
+        ]))
+      : '<div class="sb sb-idle">No accreditations found.</div>');
+    const sel = document.getElementById('reg-accred-revoke-id');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— select accreditation —</option>';
+    rows.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.id;
+      o.textContent = `#${r.id} — ${r.schema_slug} (${short(r.issuer_did, 36)})`;
+      if (String(r.id) === cur) o.selected = true;
+      sel.appendChild(o);
+    });
+  } catch(e) { setStatus('reg-accred',e.message,'error'); }
+}
+
+async function regLoadGrantDropdowns() {
+  try {
+    const [didRes, schemaRes] = await Promise.all([
+      apiInspect('reg-grant', 'GET', `${ISSUER_URL}/dids`),
+      apiInspect('reg-grant', 'GET', `${ISSUER_URL}/schemas`),
+    ]);
+    const dids    = didRes?.dids    ?? [];
+    const schemas = schemaRes?.schemas ?? [];
+
+    const idSel = document.getElementById('reg-accred-identity-id');
+    const curId = idSel.value;
+    idSel.innerHTML = '<option value="">— select issuer —</option>';
+    dids.forEach(d => {
+      const o = document.createElement('option');
+      o.value = d.did;
+      o.textContent = `${short(d.did, 48)}`;
+      if (d.did === curId) o.selected = true;
+      idSel.appendChild(o);
+    });
+
+    const scSel = document.getElementById('reg-accred-schema-id');
+    const curSc = scSel.value;
+    scSel.innerHTML = '<option value="">— select schema —</option>';
+    schemas.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.schema_id;
+      o.textContent = `${s.slug} v${s.version}`;
+      if (s.schema_id === curSc) o.selected = true;
+      scSel.appendChild(o);
+    });
+    document.getElementById('reg-grant-api').style.display = 'none';
+  } catch(e) { setStatus('reg-grant', 'Failed to load options: ' + e.message, 'error'); }
+}
+
+async function regGrantAccreditation() {
+  const did          = document.getElementById('reg-accred-identity-id').value;
+  const schema_id    = document.getElementById('reg-accred-schema-id').value;
+  const trustLevel   = document.getElementById('reg-accred-trust-level').value;
+  const accreditorDid = document.getElementById('reg-accred-accreditor-did').value.trim() || undefined;
+  const validUntilRaw = document.getElementById('reg-accred-valid-until').value;
+  const validUntil   = validUntilRaw ? new Date(validUntilRaw).toISOString() : undefined;
+  if (!did || !schema_id) { setStatus('reg-grant','Select an issuer and a schema.','warn'); return; }
+  setStatus('reg-grant','Granting…','info');
+  try {
+    const body = {did, schema_id, trustLevel};
+    if (accreditorDid) body.accreditorDid = accreditorDid;
+    if (validUntil)    body.validUntil    = validUntil;
+    const r = await apiInspect('reg-grant','POST',`${REGISTRY_URL}/registry/accreditations`, body);
+    setStatus('reg-grant','Accreditation granted.','success');
+    setResult('reg-grant', makeTable([['ID', r.id], ['Created', r.created ? 'Yes' : 'No']]));
+    document.getElementById('reg-accred-revoke-id').value = r.id;
+  } catch(e) { setStatus('reg-grant',errMsg(e),'error'); }
+}
+
+async function regRevokeAccreditation() {
+  const id = document.getElementById('reg-accred-revoke-id').value.trim();
+  if (!id) { setStatus('reg-accred','Enter an accreditation ID.','warn'); return; }
+  setStatus('reg-accred','Revoking…','info');
+  try {
+    const r = await regDelete('reg-accred', `${REGISTRY_URL}/registry/accreditations/${encodeURIComponent(id)}`);
+    appendLog('reg-accred','Revoked #'+r.id);
+    setStatus('reg-accred','Revoked.','success');
+    setResult('reg-accred', makeTable([['Revoked ID', r.id]]));
+  } catch(e) { appendLog('reg-accred',errMsg(e),'err'); setStatus('reg-accred',e.message,'error'); }
+}
+
+async function regVerifyIssuer() {
+  const did    = document.getElementById('reg-verify-did').value.trim();
+  const schema = document.getElementById('reg-verify-schema').value.trim();
+  if (!did || !schema) { setStatus('reg-verify','Enter Issuer DID and Schema Slug.','warn'); return; }
+  setStatus('reg-verify','Checking…','info');
+  try {
+    const url = `${REGISTRY_URL}/registry/verify?issuerDid=${encodeURIComponent(did)}&schemaSlug=${encodeURIComponent(schema)}`;
+    const r   = await regPublicGet('reg-verify', url);
+    if (r.trusted) {
+      setStatus('reg-verify','TRUSTED ✓','success');
+      setResult('reg-verify', makeTable([
+        ['Trusted',     'Yes ✓'],
+        ['Trust Level', r.trustLevel],
+        ['Accreditor',  short(r.accreditorDid||'—',44)],
+        ['Valid Until', r.validUntil ? new Date(r.validUntil).toLocaleString() : 'No expiry'],
+      ]));
+    } else {
+      setStatus('reg-verify','NOT TRUSTED ✗','error');
+      setResult('reg-verify', '<div class="sb sb-error">This issuer is not accredited for "'+schema+'".</div>');
+    }
+  } catch(e) { setStatus('reg-verify',e.message,'error'); }
+}
+</script>
+</body>
+</html>

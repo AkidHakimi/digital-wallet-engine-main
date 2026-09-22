@@ -1,0 +1,44 @@
+# Run once before the services start:
+#   kubectl apply -f k8s/migrate.yaml
+#   kubectl wait --for=condition=complete job/wallet-migrate -n digital-wallet --timeout=120s
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wallet-migrate
+  namespace: digital-wallet
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - until nc -z mysql 3306; do echo "waiting for mysql…"; sleep 3; done
+      containers:
+        - name: migrate
+          image: your-registry.io/digital-wallet/app:latest
+          command: ["node", "db/migrate.js"]
+          envFrom:
+            - configMapRef:
+                name: wallet-config
+            - secretRef:
+                name: wallet-secrets
+          env:
+            - name: DB_USER
+              value: "root"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wallet-secrets
+                  key: DB_ROOT_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

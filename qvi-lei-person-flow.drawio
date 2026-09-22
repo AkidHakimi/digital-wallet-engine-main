@@ -1,0 +1,419 @@
+<mxfile host="65bd71144e">
+    <diagram id="page1" name="Page 1 - QVI Issues LEI to LE">
+        <mxGraphModel dx="910" dy="672" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1240" pageHeight="1130" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="PAGE 1 — External QVI Issues LEI Credential (le-cred) to the Legal Entity" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=2;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="20" width="1160" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgKeriInt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=none;opacity=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="220" height="1010" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgWitInt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=none;opacity=10;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="80" width="220" height="1010" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgLeSvc" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=none;opacity=10;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="80" width="220" height="1010" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgKeriExt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=none;opacity=18;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="80" width="220" height="1010" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgWitExt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=none;opacity=18;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="80" width="220" height="1010" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdrGrpInt" value="1. INTERNAL — this wallet&#39;s own infrastructure (full visibility / control)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#666666;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="690" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdrGrpExt" value="2. EXTERNAL — the QVI&#39;s own infrastructure (opaque to us; only the KERI protocol surface is visible)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dddddd;strokeColor=#666666;strokeWidth=2;dashed=1;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="80" width="455" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr1a" value="1a. KERI&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;shared/keri-client.js, keri-issue-flow.js — this wallet&#39;s own protocol library&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr1b" value="1b. Witness&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Docker container &#39;witness&#39; (keypair &#39;wan&#39;) — receipts/anchors this wallet&#39;s KEL &amp; TEL events&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr1c" value="1c. Holder Service (Legal Entity)&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;holder/server.js + holder/keri.js, keriRole=&#39;le&#39;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr2a" value="2a. KERI&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;the External QVI&#39;s own KERI stack — in this demo, simulated by the same shared/keri-client.js via issuer/keri.js&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;dashed=1;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr2b" value="2b. Witness&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;the External QVI&#39;s own witness network — in this demo, the same shared witness container&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;dashed=1;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="s1_le" value="&lt;b&gt;1. Create LE AID&lt;/b&gt;&lt;br&gt;POST /holder/keri/create&lt;br&gt;{keriRole:&#39;le&#39;, name,&lt;br&gt;qviAid, qviOobi}&lt;br&gt;&lt;br&gt;createKeriAid()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e6;strokeColor=#d79b00;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="210" width="220" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="s1_keri" value="&lt;b&gt;createAid(client,alias)&lt;/b&gt;&lt;br&gt;→ identifiers().create(name)&lt;br&gt;→ addEndRole(&#39;agent&#39;)&lt;br&gt;→ oobis().get(&#39;agent&#39;)&lt;br&gt;&lt;br&gt;&lt;b&gt;resolveOobi(qviOobi)&lt;/b&gt;&lt;br&gt;caches QVI&#39;s key state" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="210" width="220" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="s1_wit" value="Witness &#39;wan&#39; receipts LE&#39;s inception (icp) event&lt;br&gt;&lt;br&gt;Anchors LE&#39;s KEL&lt;br&gt;(toad=1 satisfied)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="210" width="220" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2_qvi" value="&lt;b&gt;2. QVI Issues le-cred + Grants&lt;/b&gt;&lt;br&gt;POST /issuer/keri/issue {holderPrefix:LE_AID, schemaSaid:LE_SCHEMA_SAID, subject:{LEI}}&lt;br&gt;&lt;br&gt;&lt;b&gt;issueCredentialToHolder() → issueAndGrantAcdc()&lt;/b&gt;&lt;br&gt;→ ensureSchemaResolved()&lt;br&gt;→ resolveOobi(holderOobi)&lt;br&gt;→ issueAcdc() — credentials().issue()&lt;br&gt;→ ipexGrant() — ipex().grant()+submitGrant()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;strokeWidth=2;dashed=1;fontSize=9;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="400" width="220" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2_wit" value="Witness receipts the TEL &lt;b&gt;iss&lt;/b&gt; event in QVI&#39;s registry&lt;br&gt;(le-cred recorded in QVI&#39;s TEL)&lt;br&gt;&lt;br&gt;&lt;i&gt;IPEX grant (exn) is NOT witnessed — delivered via KERIA mailbox&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;strokeWidth=2;dashed=1;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="400" width="220" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2_le" value="&lt;i&gt;le-cred grant arrives in LE&#39;s KERIA mailbox&lt;/i&gt;&lt;br&gt;(notifications().list())" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#fff4e6;strokeColor=#d79b00;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="400" width="220" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3_le" value="&lt;b&gt;3. LE Admits le-cred&lt;/b&gt;&lt;br&gt;POST /holder/keri/admit&lt;br&gt;{fromAidPrefix:QVI_AID,&lt;br&gt;grantSaid, credentialSaid}&lt;br&gt;&lt;br&gt;admitGrant()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e6;strokeColor=#d79b00;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="590" width="220" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3_keri" value="&lt;b&gt;admitAndStoreAcdc()&lt;/b&gt;&lt;br&gt;→ resolveOobi(fromOobi)&lt;br&gt;&amp;nbsp;&amp;nbsp;(first admit from this sender)&lt;br&gt;→ ipexAdmit()&lt;br&gt;&amp;nbsp;&amp;nbsp;ipex().admit()+submitAdmit()&lt;br&gt;→ credentials().get()&lt;br&gt;&amp;nbsp;&amp;nbsp;(retried up to 30s)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="590" width="220" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3_wit" value="No witness action — IPEX admit is an exn exchange, not a KEL/TEL event" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="590" width="220" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="result" value="&lt;b&gt;Result:&lt;/b&gt; Legal Entity now holds a verifiable le-cred (the LEI), edge-chained to QVI&#39;s qvi-cred. Schema: le-cred — shared/keri/schemas/definitions.js" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="770" width="1160" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="legendA" value="&lt;b&gt;Acronym Glossary (1/2) — Core KERI Concepts&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;AID&lt;/b&gt; — Autonomic Identifier: KERI&#39;s self-certifying identifier (the actual &#39;identity&#39;)&lt;br&gt;&lt;b&gt;KERI&lt;/b&gt; — Key Event Receipt Infrastructure: the protocol itself&lt;br&gt;&lt;b&gt;KERIA&lt;/b&gt; — KERI Agent: the server-side agent signify-ts talks to&lt;br&gt;&lt;b&gt;KEL&lt;/b&gt; — Key Event Log: an AID&#39;s history of key-state changes (icp, rot...)&lt;br&gt;&lt;b&gt;TEL&lt;/b&gt; — Transaction Event Log: a registry&#39;s history of credential issuance/revocation (vcp, iss, rev...)&lt;br&gt;&lt;b&gt;OOBI&lt;/b&gt; — Out-Of-Band Introduction: a URL used to discover/resolve an AID&#39;s keys &amp; endpoint&lt;br&gt;&lt;b&gt;SAID&lt;/b&gt; — Self-Addressing Identifier: a content-hash identifier (credentials, schemas, edges)&lt;br&gt;&lt;b&gt;toad&lt;/b&gt; — Threshold Of Accountable Duplicity: witness receipts required before an event is accepted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="860" width="570" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="legendB" value="&lt;b&gt;Acronym Glossary (2/2) — Credentials &amp; vLEI Domain&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;ACDC&lt;/b&gt; — Authentic Chained Data Container: KERI&#39;s credential format&lt;br&gt;&lt;b&gt;IPEX&lt;/b&gt; — Issuance and Presentation Exchange: protocol for grant/admit (and apply/offer)&lt;br&gt;&lt;b&gt;exn&lt;/b&gt; — Exchange message: the peer-to-peer message type IPEX grant/admit are built on&lt;br&gt;&lt;b&gt;icp / iss&lt;/b&gt; — Inception event (first KEL event) / Issuance event (first TEL event)&lt;br&gt;&lt;b&gt;LEI&lt;/b&gt; — Legal Entity Identifier: the 20-character GLEIF code identifying an organization&lt;br&gt;&lt;b&gt;vLEI&lt;/b&gt; — verifiable LEI: the ACDC-based digital credential representing an LEI&lt;br&gt;&lt;b&gt;QVI&lt;/b&gt; — Qualified vLEI Issuer: GLEIF-accredited org authorized to issue vLEI credentials&lt;br&gt;&lt;b&gt;LE&lt;/b&gt; — Legal Entity: the organization holding the LEI/vLEI&lt;br&gt;&lt;b&gt;GEDA&lt;/b&gt; — GLEIF External Delegated AID: root-of-trust AID representing GLEIF in this demo&lt;br&gt;&lt;b&gt;OOR / ECR&lt;/b&gt; — Official Organizational Role / Engagement Context Role: person-level role credentials" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+                    <mxGeometry x="630" y="860" width="570" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1a" value="calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="s1_le" target="s1_keri" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1b" value="icp event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s1_keri" target="s1_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2b" value="iss event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s2_qvi" target="s2_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2c" value="IPEX grant delivered" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;fontSize=9;endArrow=block;strokeColor=#82b366;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s2_qvi" target="s2_le" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3a" value="calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="s3_le" target="s3_keri" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3b" value="n/a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s3_keri" target="s3_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq1" value="LE ready; QVI&#39;s OOBI known" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#333333;strokeWidth=1.5;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s1_le" target="s2_qvi" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq2" value="LE picks up grant" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#333333;strokeWidth=1.5;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s2_le" target="s3_le" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page2" name="Page 2 - LE Authorizes Person, QVI Issues OOR">
+        <mxGraphModel dx="910" dy="672" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1475" pageHeight="1750" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="PAGE 2 — Legal Entity Authorizes Person; QVI Issues Official Organizational Role Credential (oor-cred)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=2;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="20" width="1395" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgKeriInt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=none;opacity=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="220" height="1640" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgWitInt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=none;opacity=10;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="80" width="220" height="1640" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgLeSvc" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=none;opacity=10;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="80" width="220" height="1640" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgPersonSvc" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=none;opacity=10;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="80" width="220" height="1640" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgKeriExt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=none;opacity=18;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="80" width="220" height="1640" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgWitExt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=none;opacity=18;" parent="1" vertex="1">
+                    <mxGeometry x="1215" y="80" width="220" height="1640" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdrGrpInt" value="1. INTERNAL — this wallet&#39;s own infrastructure (full visibility / control)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#666666;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="925" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdrGrpExt" value="2. EXTERNAL — the QVI&#39;s own infrastructure (opaque to us; only the KERI protocol surface is visible)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dddddd;strokeColor=#666666;strokeWidth=2;dashed=1;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="80" width="455" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr1a" value="1a. KERI&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;shared/keri-client.js, keri-issue-flow.js — this wallet&#39;s own protocol library&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr1b" value="1b. Witness&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Docker container &#39;witness&#39; (keypair &#39;wan&#39;) — receipts/anchors this wallet&#39;s KEL &amp; TEL events&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr1c" value="1c. Holder Service (Legal Entity)&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;holder/server.js + holder/keri.js, keriRole=&#39;le&#39;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr1d" value="1d. Holder Service (Person)&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;holder/server.js + holder/keri.js, keriRole=&#39;person&#39; — same codebase as 1c, different role&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr2a" value="2a. KERI&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;the External QVI&#39;s own KERI stack — in this demo, simulated by the same shared/keri-client.js via issuer/keri.js&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;dashed=1;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr2b" value="2b. Witness&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;the External QVI&#39;s own witness network — in this demo, the same shared witness container&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;dashed=1;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1215" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="s1_person" value="&lt;b&gt;1. Create Person AID&lt;/b&gt;&lt;br&gt;POST /holder/keri/create&lt;br&gt;{keriRole:&#39;person&#39;, name,&lt;br&gt;qviAid, qviOobi}&lt;br&gt;&lt;br&gt;createKeriAid()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffae6;strokeColor=#d6b656;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="210" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s1_keri" value="&lt;b&gt;createAid(client,alias)&lt;/b&gt;&lt;br&gt;→ identifiers().create(name)&lt;br&gt;→ addEndRole(&#39;agent&#39;)&lt;br&gt;&lt;br&gt;&lt;b&gt;resolveOobi(qviOobi)&lt;/b&gt;&lt;br&gt;caches QVI&#39;s key state" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="210" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s1_wit" value="Witness &#39;wan&#39; receipts Person&#39;s inception (icp) event&lt;br&gt;&lt;br&gt;Anchors Person&#39;s KEL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="210" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2_le" value="&lt;b&gt;2. Create LE TEL Registry&lt;/b&gt;&lt;br&gt;POST /holder/keri/registry&lt;br&gt;{keriRole:&#39;le&#39;, identityId}&lt;br&gt;&lt;br&gt;createKeriRegistry()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e6;strokeColor=#d79b00;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="410" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2_keri" value="&lt;b&gt;createRegistry(client,&lt;br&gt;alias,&#39;le-registry&#39;)&lt;/b&gt;&lt;br&gt;→ registries().list()&lt;br&gt;→ registries().create(&lt;br&gt;{name,registryName})" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="410" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2_wit" value="Witness receipts the registry inception (&lt;b&gt;vcp&lt;/b&gt;) event — anchors LE&#39;s TEL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="410" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3_le" value="&lt;b&gt;3. LE Issues oor-auth-cred&lt;/b&gt;&lt;br&gt;POST /holder/keri/issue&lt;br&gt;{holderPrefix:QVI_AID,&lt;br&gt;schemaSaid:OOR_AUTH_SAID,&lt;br&gt;subject:{AID,personLegalName,&lt;br&gt;officialRole}, edge:{le:LE_CRED_SAID}}&lt;br&gt;issueCredentialToHolder()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e6;strokeColor=#d79b00;fontSize=9;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="610" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3_keri" value="&lt;b&gt;issueAndGrantAcdc()&lt;/b&gt;&lt;br&gt;→ issueAcdc()&lt;br&gt;&amp;nbsp;&amp;nbsp;credentials().issue()&lt;br&gt;&amp;nbsp;&amp;nbsp;(TEL iss, edge→le-cred)&lt;br&gt;→ ipexGrant() to QVI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="610" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3_wit" value="Witness receipts the TEL &lt;b&gt;iss&lt;/b&gt; event in LE&#39;s registry&lt;br&gt;(oor-auth-cred recorded)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="610" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3_qvi" value="&lt;i&gt;oor-auth-cred grant arrives in QVI&#39;s KERIA mailbox&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#eaf7e9;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="610" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s4_qvi" value="&lt;b&gt;4. QVI Admits oor-auth-cred&lt;/b&gt;&lt;br&gt;POST /issuer/keri/admit {fromAidPrefix:LE_AID, grantSaid, credentialSaid}&lt;br&gt;&lt;br&gt;&lt;b&gt;admitGrant() → admitAndStoreAcdc()&lt;/b&gt;&lt;br&gt;→ ipexAdmit() → credentials().get()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;strokeWidth=2;dashed=1;fontSize=9;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="810" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s4_wit" value="No witness action — IPEX admit is an exn exchange" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;strokeWidth=2;dashed=1;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="1215" y="810" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s5_qvi" value="&lt;b&gt;5. QVI Issues oor-cred&lt;/b&gt;&lt;br&gt;POST /issuer/keri/issue {holderPrefix:PERSON_AID, schemaSaid:OOR_SAID, subject:{personLegalName, officialRole}, edge:{oorAuth:OOR_AUTH_SAID}}&lt;br&gt;&lt;br&gt;&lt;b&gt;issueAndGrantAcdc()&lt;/b&gt; → issueAcdc() (TEL iss, edge→oor-auth-cred) → ipexGrant() to Person" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;strokeWidth=2;dashed=1;fontSize=9;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="1010" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s5_wit" value="Witness receipts the TEL &lt;b&gt;iss&lt;/b&gt; event in QVI&#39;s registry&lt;br&gt;(oor-cred recorded)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;strokeWidth=2;dashed=1;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="1215" y="1010" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s5_person" value="&lt;i&gt;oor-cred grant arrives in Person&#39;s KERIA mailbox&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#fffae6;strokeColor=#d6b656;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="1010" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s6_person" value="&lt;b&gt;6. Person Admits oor-cred&lt;/b&gt;&lt;br&gt;POST /holder/keri/admit&lt;br&gt;{fromAidPrefix:QVI_AID,&lt;br&gt;grantSaid, credentialSaid}&lt;br&gt;&lt;br&gt;admitGrant()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffae6;strokeColor=#d6b656;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="1210" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s6_keri" value="&lt;b&gt;admitAndStoreAcdc()&lt;/b&gt;&lt;br&gt;→ ipexAdmit()&lt;br&gt;&amp;nbsp;&amp;nbsp;ipex().admit()+submitAdmit()&lt;br&gt;→ credentials().get()&lt;br&gt;&amp;nbsp;&amp;nbsp;(retry)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="1210" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s6_wit" value="No witness action — IPEX admit is an exn exchange" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="1210" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="result" value="&lt;b&gt;Result:&lt;/b&gt; Person now holds oor-cred (Official Organizational Role). Edge chain: oor-cred → oor-auth-cred → le-cred → qvi-cred → GEDA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="1400" width="1395" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="legendA" value="&lt;b&gt;Acronym Glossary (1/2) — Core KERI Concepts&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;AID&lt;/b&gt; — Autonomic Identifier: KERI&#39;s self-certifying identifier (the actual &#39;identity&#39;)&lt;br&gt;&lt;b&gt;KERI&lt;/b&gt; — Key Event Receipt Infrastructure: the protocol itself&lt;br&gt;&lt;b&gt;KERIA&lt;/b&gt; — KERI Agent: the server-side agent signify-ts talks to&lt;br&gt;&lt;b&gt;KEL&lt;/b&gt; — Key Event Log: an AID&#39;s history of key-state changes (icp, rot...)&lt;br&gt;&lt;b&gt;TEL&lt;/b&gt; — Transaction Event Log: a registry&#39;s history of credential issuance/revocation (vcp, iss, rev...)&lt;br&gt;&lt;b&gt;OOBI&lt;/b&gt; — Out-Of-Band Introduction: a URL used to discover/resolve an AID&#39;s keys &amp; endpoint&lt;br&gt;&lt;b&gt;SAID&lt;/b&gt; — Self-Addressing Identifier: a content-hash identifier (credentials, schemas, edges)&lt;br&gt;&lt;b&gt;toad&lt;/b&gt; — Threshold Of Accountable Duplicity: witness receipts required before an event is accepted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="1490" width="665" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="legendB" value="&lt;b&gt;Acronym Glossary (2/2) — Credentials &amp; vLEI Domain&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;ACDC&lt;/b&gt; — Authentic Chained Data Container: KERI&#39;s credential format&lt;br&gt;&lt;b&gt;IPEX&lt;/b&gt; — Issuance and Presentation Exchange: protocol for grant/admit (and apply/offer)&lt;br&gt;&lt;b&gt;exn&lt;/b&gt; — Exchange message: the peer-to-peer message type IPEX grant/admit are built on&lt;br&gt;&lt;b&gt;icp / iss&lt;/b&gt; — Inception event (first KEL event) / Issuance event (first TEL event)&lt;br&gt;&lt;b&gt;LEI&lt;/b&gt; — Legal Entity Identifier: the 20-character GLEIF code identifying an organization&lt;br&gt;&lt;b&gt;vLEI&lt;/b&gt; — verifiable LEI: the ACDC-based digital credential representing an LEI&lt;br&gt;&lt;b&gt;QVI&lt;/b&gt; — Qualified vLEI Issuer: GLEIF-accredited org authorized to issue vLEI credentials&lt;br&gt;&lt;b&gt;LE&lt;/b&gt; — Legal Entity: the organization holding the LEI/vLEI&lt;br&gt;&lt;b&gt;GEDA&lt;/b&gt; — GLEIF External Delegated AID: root-of-trust AID representing GLEIF in this demo&lt;br&gt;&lt;b&gt;OOR / ECR&lt;/b&gt; — Official Organizational Role / Engagement Context Role: person-level role credentials" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+                    <mxGeometry x="730" y="1490" width="665" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1a" value="calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="s1_person" target="s1_keri" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1b" value="icp event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s1_keri" target="s1_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2a" value="calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="s2_le" target="s2_keri" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2b" value="vcp event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s2_keri" target="s2_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3a" value="calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="s3_le" target="s3_keri" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3b" value="iss event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s3_keri" target="s3_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3c" value="IPEX grant delivered" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;fontSize=9;endArrow=block;strokeColor=#82b366;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s3_keri" target="s3_qvi" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4b" value="n/a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s4_qvi" target="s4_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5b" value="iss event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s5_qvi" target="s5_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5c" value="IPEX grant delivered" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;fontSize=9;endArrow=block;strokeColor=#82b366;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s5_qvi" target="s5_person" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6a" value="calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="s6_person" target="s6_keri" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6b" value="n/a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s6_keri" target="s6_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq1" value="Person AID ready" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#333333;strokeWidth=1.5;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s1_person" target="s2_le" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq2" value="LE registry ready" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#333333;strokeWidth=1.5;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s2_le" target="s3_le" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq3" value="QVI picks up grant" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#333333;strokeWidth=1.5;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s3_qvi" target="s4_qvi" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq4" value="oor-auth-cred admitted" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#333333;strokeWidth=1.5;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s4_qvi" target="s5_qvi" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq5" value="Person picks up grant" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#333333;strokeWidth=1.5;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s5_person" target="s6_person" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page3" name="Page 3 - Present and Verify Chain">
+        <mxGraphModel dx="910" dy="672" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1475" pageHeight="1380" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="PAGE 3 — Person Presents Credential; Verifier Validates the Full Trust Chain" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=2;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="20" width="1395" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgKeriInt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=none;opacity=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="220" height="1250" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgWitInt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=none;opacity=10;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="80" width="220" height="1250" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgPersonSvc" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=none;opacity=10;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="80" width="220" height="1250" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgVerSvc" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=none;opacity=10;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="80" width="220" height="1250" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgKeriExt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=none;opacity=18;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="80" width="220" height="1250" as="geometry"/>
+                </mxCell>
+                <mxCell id="bgWitExt" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=none;opacity=18;" parent="1" vertex="1">
+                    <mxGeometry x="1215" y="80" width="220" height="1250" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdrGrpInt" value="1. INTERNAL — this wallet&#39;s own infrastructure (full visibility / control)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#666666;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="925" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdrGrpExt" value="2. EXTERNAL — the QVI&#39;s own infrastructure (opaque to us; only the KERI protocol surface is visible)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dddddd;strokeColor=#666666;strokeWidth=2;dashed=1;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="80" width="455" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr1a" value="1a. KERI&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;shared/keri-client.js, keri-issue-flow.js, keri-trust-chain.js — this wallet&#39;s own protocol library&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr1b" value="1b. Witness&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Docker container &#39;witness&#39; (keypair &#39;wan&#39;) — receipts/anchors this wallet&#39;s KEL &amp; TEL events&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr1c" value="1c. Holder Service (Person)&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;holder/server.js + holder/keri.js, keriRole=&#39;person&#39;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr1d" value="1d. Verifier Service&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;verifier/server.js + verifier/keri.js&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr2a" value="2a. KERI&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;the External QVI&#39;s own KERI stack — referenced here only for the trust-chain root, no direct calls this page&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;dashed=1;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="hdr2b" value="2b. Witness&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;the External QVI&#39;s own witness network — already receipted the ancestor credentials in earlier pages&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;dashed=1;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="1215" y="120" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="s1_ver" value="&lt;b&gt;1. Create Verifier AID&lt;/b&gt;&lt;br&gt;POST /verifier/keri/create&lt;br&gt;{name}&lt;br&gt;&lt;br&gt;createKeriAid()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdeeee;strokeColor=#b85450;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="210" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s1_keri" value="&lt;b&gt;createAid(client,alias)&lt;/b&gt;&lt;br&gt;→ identifiers().create(name)&lt;br&gt;→ addEndRole(&#39;agent&#39;)&lt;br&gt;→ oobis().get(&#39;agent&#39;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="210" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s1_wit" value="Witness &#39;wan&#39; receipts Verifier&#39;s inception (icp) event" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="210" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2_person" value="&lt;b&gt;2. Person Presents oor-cred&lt;/b&gt;&lt;br&gt;POST /holder/keri/present&lt;br&gt;{identityId, credentialSaid,&lt;br&gt;verifierAidPrefix, verifierOobi}&lt;br&gt;&lt;br&gt;presentCredential()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffae6;strokeColor=#d6b656;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="410" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2_keri" value="&lt;b&gt;resolveOobi(verifierOobi)&lt;/b&gt;&lt;br&gt;→ &lt;b&gt;serdersFromCredential()&lt;/b&gt;&lt;br&gt;rebuilds acdc/anc/iss Serders&lt;br&gt;→ &lt;b&gt;ipexGrant()&lt;/b&gt; re-grants&lt;br&gt;the held ACDC onward" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="410" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2_wit" value="No witness action — presentation grant is an exn message" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="410" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2_ver" value="&lt;i&gt;Presentation grant arrives in Verifier&#39;s KERIA mailbox&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#fdeeee;strokeColor=#b85450;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="410" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3_ver" value="&lt;b&gt;3. Verifier Resolves Sender&lt;/b&gt;&lt;br&gt;POST /verifier/keri/resolve-sender&lt;br&gt;{fromAidPrefix:PERSON_AID,&lt;br&gt;fromOobi}&lt;br&gt;&lt;br&gt;resolveSenderOobi()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdeeee;strokeColor=#b85450;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="610" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3_keri" value="&lt;b&gt;resolveOobi(client,&lt;br&gt;fromOobi,&#39;sender-...&#39;)&lt;/b&gt;&lt;br&gt;caches Person&#39;s key state&lt;br&gt;&lt;br&gt;&lt;i&gt;must run BEFORE admit, else&lt;br&gt;KERIA escrows + crashes on&lt;br&gt;unknown sender&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;fontSize=9;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="610" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3_wit" value="N/A — key-state query only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="610" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s4_ver" value="&lt;b&gt;4. Verifier Admits &amp; Verifies&lt;/b&gt;&lt;br&gt;POST /verifier/keri/admit&lt;br&gt;{grantSaid, credentialSaid}&lt;br&gt;&lt;br&gt;admitAndVerify()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdeeee;strokeColor=#b85450;fontSize=10;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="745" y="810" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s4_keri" value="&lt;b&gt;admitAndStoreAcdc()&lt;/b&gt;&lt;br&gt;→ ipexAdmit()+credentials().get()&lt;br&gt;&lt;br&gt;&lt;b&gt;verifyAcdcChain(said,&lt;br&gt;TRUSTED_ROOT_AID_PREFIXES)&lt;/b&gt;&lt;br&gt;keri-trust-chain.js" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;fontSize=9;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="810" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s4_wit" value="No witness action for the admit itself — chain walk reads each ancestor&#39;s already-witnessed TEL data (replayed locally)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ebf3ff;strokeColor=#6c8ebf;fontSize=9;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="810" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="s4_qvi" value="Chain walk confirms each issuer AID at every edge hop:&lt;br&gt;oor-cred ← oor-auth-cred ← le-cred ← qvi-cred ← GEDA&lt;br&gt;(root in TRUSTED_ROOT_AID_PREFIXES)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf7e9;strokeColor=#9673a6;strokeWidth=2;dashed=1;fontSize=9;align=left;verticalAlign=top;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="980" y="810" width="220" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="result" value="&lt;b&gt;Result:&lt;/b&gt; Trust chain fully verified — LEI (Legal Entity) and Official Role (Person) both accepted by the Verifier. Root of trust: GEDA (process.env.GEDA_AID_PREFIX / TRUSTED_ROOT_AID_PREFIXES)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=12;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="1000" width="1395" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="legendA" value="&lt;b&gt;Acronym Glossary (1/2) — Core KERI Concepts&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;AID&lt;/b&gt; — Autonomic Identifier: KERI&#39;s self-certifying identifier (the actual &#39;identity&#39;)&lt;br&gt;&lt;b&gt;KERI&lt;/b&gt; — Key Event Receipt Infrastructure: the protocol itself&lt;br&gt;&lt;b&gt;KERIA&lt;/b&gt; — KERI Agent: the server-side agent signify-ts talks to&lt;br&gt;&lt;b&gt;KEL&lt;/b&gt; — Key Event Log: an AID&#39;s history of key-state changes (icp, rot...)&lt;br&gt;&lt;b&gt;TEL&lt;/b&gt; — Transaction Event Log: a registry&#39;s history of credential issuance/revocation (vcp, iss, rev...)&lt;br&gt;&lt;b&gt;OOBI&lt;/b&gt; — Out-Of-Band Introduction: a URL used to discover/resolve an AID&#39;s keys &amp; endpoint&lt;br&gt;&lt;b&gt;SAID&lt;/b&gt; — Self-Addressing Identifier: a content-hash identifier (credentials, schemas, edges)&lt;br&gt;&lt;b&gt;toad&lt;/b&gt; — Threshold Of Accountable Duplicity: witness receipts required before an event is accepted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="1100" width="665" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="legendB" value="&lt;b&gt;Acronym Glossary (2/2) — Credentials &amp; vLEI Domain&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;ACDC&lt;/b&gt; — Authentic Chained Data Container: KERI&#39;s credential format&lt;br&gt;&lt;b&gt;IPEX&lt;/b&gt; — Issuance and Presentation Exchange: protocol for grant/admit (and apply/offer)&lt;br&gt;&lt;b&gt;exn&lt;/b&gt; — Exchange message: the peer-to-peer message type IPEX grant/admit are built on&lt;br&gt;&lt;b&gt;icp / iss&lt;/b&gt; — Inception event (first KEL event) / Issuance event (first TEL event)&lt;br&gt;&lt;b&gt;LEI&lt;/b&gt; — Legal Entity Identifier: the 20-character GLEIF code identifying an organization&lt;br&gt;&lt;b&gt;vLEI&lt;/b&gt; — verifiable LEI: the ACDC-based digital credential representing an LEI&lt;br&gt;&lt;b&gt;QVI&lt;/b&gt; — Qualified vLEI Issuer: GLEIF-accredited org authorized to issue vLEI credentials&lt;br&gt;&lt;b&gt;LE&lt;/b&gt; — Legal Entity: the organization holding the LEI/vLEI&lt;br&gt;&lt;b&gt;GEDA&lt;/b&gt; — GLEIF External Delegated AID: root-of-trust AID representing GLEIF in this demo&lt;br&gt;&lt;b&gt;OOR / ECR&lt;/b&gt; — Official Organizational Role / Engagement Context Role: person-level role credentials" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+                    <mxGeometry x="730" y="1100" width="665" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1a" value="calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="s1_ver" target="s1_keri" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1b" value="icp event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s1_keri" target="s1_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2a" value="calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="s2_person" target="s2_keri" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2b" value="n/a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s2_keri" target="s2_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2c" value="IPEX grant delivered" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;fontSize=9;endArrow=block;strokeColor=#b85450;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s2_person" target="s2_ver" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3a" value="calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="s3_ver" target="s3_keri" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3b" value="n/a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s3_keri" target="s3_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4a" value="calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="s4_ver" target="s4_keri" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4b" value="reads TEL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#666666;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s4_keri" target="s4_wit" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4c" value="walks edge chain" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#82b366;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s4_keri" target="s4_qvi" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq1" value="Verifier AID ready" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#333333;strokeWidth=1.5;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s1_ver" target="s2_person" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq2" value="Verifier picks up grant" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#333333;strokeWidth=1.5;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s2_ver" target="s3_ver" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq3" value="sender key state cached" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=9;endArrow=block;strokeColor=#333333;strokeWidth=1.5;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s3_ver" target="s4_ver" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

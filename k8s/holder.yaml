@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: holder
+  namespace: digital-wallet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: holder
+  template:
+    metadata:
+      labels:
+        app: holder
+    spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - until nc -z mysql 3306; do echo "waiting for mysql…"; sleep 3; done
+      containers:
+        - name: holder
+          image: your-registry.io/digital-wallet/app:latest
+          command: ["node", "holder/server.js"]
+          ports:
+            - containerPort: 3002
+          envFrom:
+            - configMapRef:
+                name: wallet-config
+            - secretRef:
+                name: wallet-secrets
+          env:
+            - name: HOLDER_PORT
+              value: "3002"
+            - name: DB_USER
+              value: "root"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wallet-secrets
+                  key: DB_ROOT_PASSWORD
+            # Holder must resolve OID4VCI offers from issuer and OID4VP requests
+            # from verifier — these internal cluster URLs are set by wallet-config
+            # (ISSUER_BASE_URL=http://issuer:3001, VERIFIER_BASE_URL=http://verifier:3003)
+          readinessProbe:
+            httpGet:
+              path: /dids
+              port: 3002
+              httpHeaders:
+                - name: x-api-client
+                  value: default-client
+                - name: x-api-key
+                  value: placeholder
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: holder
+  namespace: digital-wallet
+spec:
+  selector:
+    app: holder
+  ports:
+    - port: 3002
+      targetPort: 3002

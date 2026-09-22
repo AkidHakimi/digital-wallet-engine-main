@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node -e \"import\\('multiformats/bases/base58'\\).then\\(m => console.log\\('OK:', Object.keys\\(m\\)\\)\\).catch\\(e => console.error\\('FAIL:', e.message\\)\\)\")",
+      "Bash(Select-String \"multiformats\")",
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\User\\\\Documents\\\\NodeJS\\\\digital-wallet\" | Where-Object { $_.Name -ne 'node_modules' } | Format-Table Name, PSIsContainer -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Documents\\\\NodeJS\\\\digital-wallet\" -Force | Select-Object Name, @{Name=\"Type\"; Expression={if \\($_.PSIsContainer\\) { \"DIR\" } else { \"FILE\" }}})",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Documents\\\\NodeJS\\\\digital-wallet\" -File -Depth 2 | Where-Object { $_.Extension -in @\\('.js', '.html', '.json'\\) -and $_.FullName -notmatch 'node_modules' } | Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Documents\\\\NodeJS\\\\digital-wallet\" -Recurse -File | Where-Object { $_.Extension -in @\\('.js', '.html', '.json'\\) } | Where-Object { $_.FullName -notmatch 'node_modules' } | Sort-Object FullName)",
+      "Bash(node -e \"import\\('jose'\\).then\\(j => console.log\\(Object.keys\\(j\\).filter\\(k => k.toLowerCase\\(\\).includes\\('decode'\\)\\)\\)\\).catch\\(console.error\\)\")",
+      "Bash(node -e \"import\\('jose'\\).then\\(j => { const s = new j.SignJWT\\({test: 1}\\); console.log\\(typeof s.setProtectedHeader, typeof s.setIssuedAt, typeof s.setExpirationTime, typeof s.setIssuer, typeof s.setAudience, typeof s.setJti, typeof s.setNotBefore, typeof s.setSubject, typeof s.sign\\) }\\).catch\\(e => console.error\\(e.message\\)\\)\")",
+      "Bash(node -e \"import\\('qrcode'\\).then\\(q => console.log\\('qrcode available, keys:', Object.keys\\(q\\)\\)\\).catch\\(e => console.log\\('qrcode NOT installed:', e.message\\)\\)\")",
+      "Bash(node -e \"import\\('cors'\\).then\\(c => console.log\\('cors available'\\)\\).catch\\(e => console.log\\('cors NOT installed:', e.message\\)\\)\")",
+      "Bash(node -e \"import\\('express'\\).then\\(e => { const app = e.default\\(\\); console.log\\('express json available:', typeof app.use\\) }\\).catch\\(console.error\\)\")",
+      "Bash(node -e \"const {SignJWT, jwtVerify, importJWK, decodeJwt, decodeProtectedHeader} = await import\\('jose'\\); console.log\\('all jose functions:', !!SignJWT, !!jwtVerify, !!importJWK, !!decodeJwt, !!decodeProtectedHeader\\)\")",
+      "Bash(node --input-type=module -e \"import {SignJWT, jwtVerify, importJWK, decodeJwt, decodeProtectedHeader} from 'jose'; console.log\\('all jose functions:', !!SignJWT, !!jwtVerify, !!importJWK, !!decodeJwt, !!decodeProtectedHeader\\)\")",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(node --input-type=module --eval ' *)",
+      "Bash(node --input-type=module -e \"import {assignStatusIndex} from './shared/status-list.js'; console.log\\('ok:', typeof assignStatusIndex\\);\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Documents\\\\NodeJS\\\\digital-wallet\" -Recurse -Force)",
+      "Bash(Select-Object FullName)",
+      "Bash(Head -50)"
+    ]
+  }
+}

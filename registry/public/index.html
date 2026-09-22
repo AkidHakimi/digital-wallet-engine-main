@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trust Registry</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+    header { background: #1a1a2e; color: #f9fafb; padding: 18px 28px;
+             display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: .01em; }
+    header p  { font-size: .8rem; opacity: .55; }
+
+    #tab-nav { max-width: 1200px; margin: 20px auto 0; padding: 0 24px;
+               display: flex; gap: 4px; flex-wrap: wrap; }
+    .tab-btn { padding: 10px 22px; border: none; border-radius: 8px 8px 0 0; cursor: pointer;
+               font-weight: 600; font-size: .875rem; background: #e5e7eb; color: #6b7280;
+               transition: background .12s; }
+    .tab-btn:hover  { background: #d1d5db; }
+    .tab-btn.active { background: #fff; color: #1a1a2e; box-shadow: 0 -2px 8px rgba(0,0,0,.06); }
+    .tab-btn.t-did.active     { color: #4f46e5; }
+    .tab-btn.t-schema.active  { color: #0891b2; }
+    .tab-btn.t-revoke.active  { color: #dc2626; }
+    .tab-btn.t-accred.active  { color: #059669; }
+    .tab-btn.t-verify.active  { color: #d97706; }
+
+    .tab-panel { display: none; max-width: 1200px; margin: 0 auto; padding: 0 24px 48px; }
+    .tab-panel.active { display: block; }
+    .panel-inner { background: #fff; border-radius: 0 10px 10px 10px;
+                   box-shadow: 0 2px 12px rgba(0,0,0,.07); overflow: hidden; }
+
+    .panel-header { display: flex; align-items: center; justify-content: space-between;
+                    padding: 18px 24px; border-bottom: 1px solid #f1f3f5; flex-wrap: wrap; gap: 10px; }
+    .panel-title { font-size: 1rem; font-weight: 700; }
+    .panel-meta  { font-size: .78rem; color: #9ca3af; }
+    .btn-refresh { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px;
+                   padding: 6px 14px; font-size: .8rem; font-weight: 600; cursor: pointer;
+                   color: #374151; transition: background .12s; }
+    .btn-refresh:hover { background: #e5e7eb; }
+
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    thead th { background: #f8fafc; padding: 11px 16px; text-align: left;
+               font-weight: 600; color: #6b7280; font-size: .75rem; text-transform: uppercase;
+               letter-spacing: .04em; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid #f1f3f5; transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #fafbfc; }
+    tbody td { padding: 12px 16px; vertical-align: top; }
+
+    .mono { font-family: 'SFMono-Regular', Consolas, monospace; font-size: .78rem;
+            word-break: break-all; color: #374151; }
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: .72rem;
+             font-weight: 600; white-space: nowrap; }
+    .badge-issuer         { background: #ede9fe; color: #5b21b6; }
+    .badge-verifier       { background: #dcfce7; color: #166534; }
+    .badge-revoke         { background: #fee2e2; color: #991b1b; }
+    .badge-suspend        { background: #fef3c7; color: #92400e; }
+    .badge-key            { background: #e0f2fe; color: #0369a1; }
+    .badge-web            { background: #f0fdf4; color: #166534; }
+    .badge-self-asserted  { background: #f3f4f6; color: #374151; }
+    .badge-accredited     { background: #dbeafe; color: #1d4ed8; }
+    .badge-government     { background: #fef9c3; color: #854d0e; }
+
+    .chip { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: .7rem;
+            font-weight: 600; background: #ede9fe; color: #5b21b6; margin: 2px 2px 0 0; }
+
+    .text-muted { color: #9ca3af; font-size: .78rem; }
+
+    details summary { cursor: pointer; color: #4f46e5; font-size: .78rem; font-weight: 600;
+                      user-select: none; outline: none; }
+    details pre { margin-top: 8px; background: #f8fafc; border: 1px solid #e5e7eb;
+                  border-radius: 6px; padding: 10px 12px; font-size: .72rem;
+                  font-family: 'SFMono-Regular', Consolas, monospace;
+                  white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow-y: auto; }
+
+    .empty { padding: 48px 24px; text-align: center; color: #9ca3af; }
+    .empty p { font-size: .88rem; }
+
+    .loading { padding: 48px 24px; text-align: center; }
+    .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid #e5e7eb;
+               border-top-color: #4f46e5; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg { padding: 16px 24px; color: #dc2626; font-size: .83rem; background: #fef2f2;
+                 border-top: 1px solid #fecaca; }
+
+    /* ── Verify tab ── */
+    .verify-form { padding: 28px 24px; border-bottom: 1px solid #f1f3f5; display: flex;
+                   gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .verify-form label { display: flex; flex-direction: column; gap: 4px; font-size: .8rem;
+                         font-weight: 600; color: #374151; }
+    .verify-form input { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 12px;
+                         font-size: .83rem; width: 300px; outline: none; }
+    .verify-form input:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,.15); }
+    .btn-verify { background: #d97706; color: #fff; border: none; border-radius: 6px;
+                  padding: 9px 20px; font-size: .83rem; font-weight: 600; cursor: pointer; }
+    .btn-verify:hover { background: #b45309; }
+    .verify-result { padding: 24px; }
+    .result-trusted { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
+                      padding: 20px 24px; }
+    .result-untrusted { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;
+                        padding: 20px 24px; }
+    .result-icon { font-size: 1.5rem; margin-bottom: 6px; }
+    .result-title { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
+    .result-trusted .result-title { color: #166534; }
+    .result-untrusted .result-title { color: #991b1b; }
+    .result-rows { display: flex; flex-direction: column; gap: 4px; font-size: .83rem; color: #374151; }
+    .result-rows span { color: #6b7280; font-size: .75rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Trust Registry</h1>
+    <p>Public directory of trusted issuers, credential schemas, and revocation lists</p>
+  </div>
+</header>
+
+<div id="tab-nav">
+  <button class="tab-btn t-did active"   data-tab="did">DID Registry</button>
+  <button class="tab-btn t-schema"       data-tab="schema">Schema Registry</button>
+  <button class="tab-btn t-revoke"       data-tab="revoke">Credential Revocation Registry</button>
+  <button class="tab-btn t-accred"       data-tab="accred">Accreditations</button>
+  <button class="tab-btn t-verify"       data-tab="verify">Verify Issuer</button>
+</div>
+
+<!-- DID Registry -->
+<div id="tab-did" class="tab-panel active">
+  <div class="panel-inner">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">DID Registry</div>
+        <div class="panel-meta" id="did-meta">Registered issuer and verifier DIDs</div>
+      </div>
+      <button class="btn-refresh" onclick="load('did')">Refresh</button>
+    </div>
+    <div id="did-body"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- Schema Registry -->
+<div id="tab-schema" class="tab-panel">
+  <div class="panel-inner">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Schema Registry</div>
+        <div class="panel-meta" id="schema-meta">Published credential schemas</div>
+      </div>
+      <button class="btn-refresh" onclick="load('schema')">Refresh</button>
+    </div>
+    <div id="schema-body"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- Credential Revocation Registry -->
+<div id="tab-revoke" class="tab-panel">
+  <div class="panel-inner">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Credential Revocation Registry</div>
+        <div class="panel-meta" id="revoke-meta">Status lists for credential revocation and suspension</div>
+      </div>
+      <button class="btn-refresh" onclick="load('revoke')">Refresh</button>
+    </div>
+    <div id="revoke-body"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- Accreditations -->
+<div id="tab-accred" class="tab-panel">
+  <div class="panel-inner">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Accreditations</div>
+        <div class="panel-meta" id="accred-meta">Authorized issuers per credential schema</div>
+      </div>
+      <button class="btn-refresh" onclick="load('accred')">Refresh</button>
+    </div>
+    <div id="accred-body"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<!-- Verify Issuer -->
+<div id="tab-verify" class="tab-panel">
+  <div class="panel-inner">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Verify Issuer</div>
+        <div class="panel-meta">Check if an issuer is accredited for a specific credential schema</div>
+      </div>
+    </div>
+    <div class="verify-form">
+      <label>Issuer DID<input id="v-did" type="text" placeholder="did:key:z6Mk…"></label>
+      <label>Schema Slug<input id="v-schema" type="text" placeholder="employee-badge"></label>
+      <button class="btn-verify" onclick="doVerify()">Check Trust</button>
+    </div>
+    <div id="verify-result" class="verify-result" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  function fmt(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString();
+  }
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function setMeta(id, count, ts) {
+    document.getElementById(id).textContent =
+      count + ' entr' + (count === 1 ? 'y' : 'ies') + ' · last updated ' + ts;
+  }
+
+  const BASE = window.location.pathname.replace(/\/[^/]*$/, '');
+
+  // Cache accreditations for cross-referencing in DID tab
+  let accredCache = [];
+
+  async function load(tab) {
+    const map = {
+      did:    BASE + '/registry/dids',
+      schema: BASE + '/registry/schemas',
+      revoke: BASE + '/registry/cred-revocations',
+      accred: BASE + '/registry/accreditations'
+    };
+    const bodyEl = document.getElementById(tab + '-body');
+    bodyEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+    try {
+      const res  = await fetch(map[tab]);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const ts   = new Date().toLocaleTimeString();
+
+      if (tab === 'did')    renderDids(data, ts);
+      if (tab === 'schema') renderSchemas(data, ts);
+      if (tab === 'revoke') renderRevocations(data, ts);
+      if (tab === 'accred') { accredCache = data; renderAccreditations(data, ts); }
+    } catch (e) {
+      bodyEl.innerHTML = '<div class="error-msg">Failed to load: ' + esc(e.message) + '</div>';
+    }
+  }
+
+  function getAccredChips(did) {
+    const slugs = accredCache
+      .filter(a => a.issuer_did === did)
+      .map(a => `<span class="chip">${esc(a.schema_slug)}</span>`);
+    return slugs.length ? slugs.join('') : '<span class="text-muted">none</span>';
+  }
+
+  // ── DID Registry ──────────────────────────────────────────────────────────
+  function renderDids(rows, ts) {
+    setMeta('did-meta', rows.length, ts);
+    const el = document.getElementById('did-body');
+    if (!rows.length) {
+      el.innerHTML = '<div class="empty"><p>No registered DIDs found.</p></div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>DID</th><th>Role</th><th>Method</th><th>Domain</th>
+            <th>Accredited For</th><th>Registered</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td class="mono">${esc(r.did)}</td>
+                <td><span class="badge badge-${r.role}">${esc(r.role)}</span></td>
+                <td><span class="badge ${r.did_method === 'did:web' ? 'badge-web' : 'badge-key'}">${esc(r.did_method)}</span></td>
+                <td class="text-muted">${r.domain ? esc(r.domain) : '—'}</td>
+                <td>${getAccredChips(r.did)}</td>
+                <td class="text-muted">${fmt(r.created_at)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  // ── Schema Registry ───────────────────────────────────────────────────────
+  function renderSchemas(rows, ts) {
+    setMeta('schema-meta', rows.length, ts);
+    const el = document.getElementById('schema-body');
+    if (!rows.length) {
+      el.innerHTML = '<div class="empty"><p>No credential schemas found.</p></div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Slug</th><th>Version</th><th>Schema ID</th><th>Schema</th><th>Registered</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td><strong>${esc(r.slug)}</strong></td>
+                <td class="text-muted">${esc(r.version)}</td>
+                <td class="mono">${esc(r.schema_id)}</td>
+                <td>
+                  <details>
+                    <summary>View JSON</summary>
+                    <pre>${esc(JSON.stringify(typeof r.schema_json === 'string' ? JSON.parse(r.schema_json) : r.schema_json, null, 2))}</pre>
+                  </details>
+                </td>
+                <td class="text-muted">${fmt(r.created_at)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  // ── Credential Revocation Registry ───────────────────────────────────────────────────
+  function renderRevocations(rows, ts) {
+    setMeta('revoke-meta', rows.length, ts);
+    const el = document.getElementById('revoke-body');
+    if (!rows.length) {
+      el.innerHTML = '<div class="empty"><p>No status lists found.</p></div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>List ID</th><th>Purpose</th><th>Issuer DID</th>
+            <th>Usage</th><th>Status List VC URL</th><th>Updated</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(r => {
+              const pct = r.list_size ? Math.round((r.next_index / r.list_size) * 100) : 0;
+              return `
+              <tr>
+                <td class="mono">${esc(r.list_id)}</td>
+                <td><span class="badge ${r.purpose === 'revocation' ? 'badge-revoke' : 'badge-suspend'}">${esc(r.purpose)}</span></td>
+                <td class="mono">${esc(r.issuer_did)}</td>
+                <td>
+                  <div style="font-size:.78rem;color:#374151">${r.next_index.toLocaleString()} / ${r.list_size.toLocaleString()}</div>
+                  <div style="margin-top:4px;background:#e5e7eb;border-radius:4px;height:5px;width:100px">
+                    <div style="background:#4f46e5;height:5px;border-radius:4px;width:${pct}%"></div>
+                  </div>
+                </td>
+                <td class="mono">${r.vc_id ? `<a href="${esc(r.vc_id)}" target="_blank" style="color:#4f46e5;text-decoration:none;font-size:.75rem">${esc(r.vc_id)}</a>` : '—'}</td>
+                <td class="text-muted">${fmt(r.updated_at)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  // ── Accreditations ────────────────────────────────────────────────────────
+  function renderAccreditations(rows, ts) {
+    setMeta('accred-meta', rows.length, ts);
+    const el = document.getElementById('accred-body');
+    if (!rows.length) {
+      el.innerHTML = '<div class="empty"><p>No accreditations found.</p></div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Issuer DID</th><th>Schema</th><th>Trust Level</th>
+            <th>Accreditor DID</th><th>Valid Until</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td class="mono">${esc(r.issuer_did)}</td>
+                <td>
+                  <strong>${esc(r.schema_slug)}</strong>
+                  <div class="text-muted">v${esc(r.version)}</div>
+                </td>
+                <td><span class="badge badge-${r.trust_level}">${esc(r.trust_level)}</span></td>
+                <td class="mono">${r.accreditor_did ? esc(r.accreditor_did) : '<span class="text-muted">—</span>'}</td>
+                <td class="text-muted">${r.valid_until ? fmt(r.valid_until) : 'No expiry'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  // ── Verify Issuer ─────────────────────────────────────────────────────────
+  async function doVerify() {
+    const did    = document.getElementById('v-did').value.trim();
+    const schema = document.getElementById('v-schema').value.trim();
+    const el     = document.getElementById('verify-result');
+
+    if (!did || !schema) {
+      el.style.display = 'block';
+      el.innerHTML = '<div class="error-msg">Both Issuer DID and Schema Slug are required.</div>';
+      return;
+    }
+
+    el.style.display = 'block';
+    el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+    try {
+      const res  = await fetch(`${BASE}/registry/verify?issuerDid=${encodeURIComponent(did)}&schemaSlug=${encodeURIComponent(schema)}`);
+      const data = await res.json();
+
+      if (data.trusted) {
+        el.innerHTML = `
+          <div class="result-trusted">
+            <div class="result-icon">✓</div>
+            <div class="result-title">Trusted Issuer</div>
+            <div class="result-rows">
+              <div><span>Trust Level</span><br><span class="badge badge-${data.trustLevel}" style="margin-top:4px">${esc(data.trustLevel)}</span></div>
+              ${data.accreditorDid ? `<div style="margin-top:8px"><span>Accredited By</span><br><code style="font-size:.78rem">${esc(data.accreditorDid)}</code></div>` : ''}
+              <div style="margin-top:8px"><span>Valid Until</span><br>${data.validUntil ? fmt(data.validUntil) : 'No expiry'}</div>
+            </div>
+          </div>`;
+      } else {
+        el.innerHTML = `
+          <div class="result-untrusted">
+            <div class="result-icon">✗</div>
+            <div class="result-title">Not a Trusted Issuer</div>
+            <div class="result-rows">
+              <div>This DID is not accredited to issue <strong>${esc(schema)}</strong> credentials,
+              or the accreditation has expired or been revoked.</div>
+            </div>
+          </div>`;
+      }
+    } catch (e) {
+      el.innerHTML = '<div class="error-msg">Verification failed: ' + esc(e.message) + '</div>';
+    }
+  }
+
+  document.getElementById('v-schema').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doVerify();
+  });
+
+  // Initial load — accreditations first so DID chips are ready
+  load('accred').then(() => load('did'));
+  load('schema');
+  load('revoke');
+</script>
+</body>
+</html>

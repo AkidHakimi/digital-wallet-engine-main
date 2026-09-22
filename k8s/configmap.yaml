@@ -1,0 +1,33 @@
+# Shared config for all backend services (non-sensitive)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wallet-config
+  namespace: digital-wallet
+data:
+  DB_HOST:           "mysql"
+  DB_PORT:           "3306"
+  DB_NAME:           "digitalwallet"
+  DB_USER:           "root"
+  DEFAULT_CLIENT_ID: "default-client"
+  DEFAULT_TENANT_ID: "1"
+  # Internal cluster URLs — used for container-to-container calls
+  ISSUER_BASE_URL:   "http://issuer:3001"
+  HOLDER_BASE_URL:   "http://holder:3002"
+  VERIFIER_BASE_URL: "http://verifier:3003"
+  DEMO_BASE_URL:     "http://demo:3004"
+---
+# Demo-service overrides — these URLs are returned to the browser,
+# so they must be reachable from the user's machine.
+# Update to match your Ingress host or NodePort IP.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wallet-demo-config
+  namespace: digital-wallet
+data:
+  ISSUER_BASE_URL:   "http://issuer.wallet.local"
+  HOLDER_BASE_URL:   "http://holder.wallet.local"
+  VERIFIER_BASE_URL: "http://verifier.wallet.local"
+  DEMO_BASE_URL:     "http://demo.wallet.local"
+  DEMO_PORT:         "3004"

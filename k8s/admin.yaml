@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin
+  namespace: digital-wallet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin
+  template:
+    metadata:
+      labels:
+        app: admin
+    spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - until nc -z mysql 3306; do echo "waiting for mysql…"; sleep 3; done
+      containers:
+        - name: admin
+          image: your-registry.io/digital-wallet/app:latest
+          command: ["node", "admin/server.js"]
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: wallet-config
+            - secretRef:
+                name: wallet-secrets
+          env:
+            - name: ADMIN_PORT
+              value: "3000"
+            - name: DB_USER
+              value: "root"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wallet-secrets
+                  key: DB_ROOT_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /tenants
+              port: 3000
+              httpHeaders:
+                - name: x-admin-key
+                  value: placeholder
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin
+  namespace: digital-wallet
+spec:
+  selector:
+    app: admin
+  ports:
+    - port: 3000
+      targetPort: 3000

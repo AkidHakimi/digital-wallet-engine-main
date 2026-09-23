@@ -190,6 +190,187 @@ async function handleMetadata(req, res) {
   });
 }
 
+// ── POST /oid4vp/receive  (auth: verifier scope) ──────────────────────────
+// Reverse flow: Verifier receives & verifies credential from holder-initiated share
+// Body: {shareUri, acceptableCredentialTypes?, requiredClaims?}
+async function handleReceiveShare(req, res) {
+  try {
+    const tenantId = req.tenant.id;
+    const {did: verifierDid} = await getVerifierKeys(tenantId);
+    const {shareUri, acceptableCredentialTypes = [], requiredClaims = []} = req.body ?? {};
+
+    if (!shareUri) {
+      return res.status(400).json({error: 'shareUri is required'});
+    }
+
+    // Fetch the credential from the holder's share
+    console.log('[Verifier OID4VP] Fetching shared credential from:', shareUri);
+    const shareRes = await fetch(shareUri);
+    if (!shareRes.ok) {
+      return res.status(502).json({
+        error: 'Failed to fetch credential',
+        details: `Holder returned ${shareRes.status}`
+      });
+    }
+
+    const shareData = await shareRes.json();
+    if (!shareData.format) {
+      return res.status(400).json({error: 'Invalid share format'});
+    }
+
+    const state = uuidv4();
+    results.set(state, {status: 'pending'});
+
+    if (shareData.format === 'vc-ld') {
+      // ── VC-LD verification ──────────────────────────────────────────────
+      const verifiablePresentation = shareData.verifiablePresentation;
+
+      const suite = new Ed25519Signature2020();
+      const result = await vc.verify({
+        presentation: verifiablePresentation,
+        suite,
+        documentLoader,
+        checkStatus: async ({credential}) => {
+          const status = credential?.credentialStatus;
+          if (!status?.statusListCredential) return {verified: true};
+          try {
+            const listRes = await fetch(status.statusListCredential);
+            if (!listRes.ok) return {verified: true};
+            const listVc = await listRes.json();
+            const encoded = listVc?.credentialSubject?.encodedList;
+            if (!encoded) return {verified: true};
+            const buffer = decodeList(encoded);
+            const bit = getBit(buffer, parseInt(status.statusListIndex));
+            if (bit === 1) {
+              return {verified: false, error: new Error('Credential has been revoked by issuer')};
+            }
+          } catch {
+            // non-fatal
+          }
+          return {verified: true};
+        }
+      });
+
+      if (!result.verified) {
+        const errMsg = result.error?.message ?? 'Verification failed';
+        console.warn('[Verifier OID4VP] VP verification failed:', errMsg);
+        results.set(state, {status: 'error', verified: false, error: errMsg});
+        return res.status(400).json({error: 'vp_verification_failed', details: errMsg});
+      }
+
+      const credential = verifiablePresentation.verifiableCredential?.[0];
+
+      // Validate credential type if specified
+      if (acceptableCredentialTypes.length > 0) {
+        const credTypes = Array.isArray(credential?.type) ? credential.type : [];
+        const typeMatch = acceptableCredentialTypes.some(t => credTypes.includes(t));
+        if (!typeMatch) {
+          const errMsg = `Credential type not accepted. Expected: ${acceptableCredentialTypes.join(', ')}, got: ${credTypes.join(', ')}`;
+          results.set(state, {status: 'error', verified: false, error: errMsg});
+          return res.status(400).json({error: 'credential_type_mismatch', details: errMsg});
+        }
+      }
+
+      // Validate required claims if specified
+      if (requiredClaims.length > 0) {
+        const subject = credential?.credentialSubject ?? {};
+        const missingClaims = requiredClaims.filter(claim => subject[claim] === undefined);
+        if (missingClaims.length > 0) {
+          const errMsg = `Missing required claims: ${missingClaims.join(', ')}`;
+          results.set(state, {status: 'error', verified: false, error: errMsg});
+          return res.status(400).json({error: 'missing_required_claims', details: errMsg});
+        }
+      }
+
+      const issuerDid = typeof credential?.issuer === 'string' ? credential.issuer : credential?.issuer?.id;
+      const schemaSlug = schemaSlugFromUrl(credential?.credentialSchema?.id);
+      const trust = await checkTrustRegistry(issuerDid, schemaSlug);
+
+      results.set(state, {
+        status: 'complete',
+        verified: true,
+        format: 'ldp_vc',
+        holder: verifiablePresentation.holder,
+        credential: {
+          id: credential?.id,
+          type: credential?.type,
+          issuer: credential?.issuer,
+          issuanceDate: credential?.issuanceDate,
+          credentialSubject: credential?.credentialSubject
+        },
+        verifiedAt: new Date().toISOString(),
+        ...(trust && !trust.trusted && {
+          trustWarning: `Issuer is not accredited in the trust registry for schema "${schemaSlug}"`
+        }),
+        ...(trust && {trustRegistry: trust})
+      });
+
+      await auditLog('VERIFY_VP', {tenantId, did: verifiablePresentation.holder, actor: 'oid4vp-share-vcld'});
+      console.log(`[Verifier OID4VP] Verified VC-LD from holder share, state: ${state}`);
+      return res.status(201).json({state, status: 'verified', format: 'vc-ld'});
+    }
+
+    if (shareData.format === 'sd-jwt') {
+      // ── SD-JWT verification ─────────────────────────────────────────────
+      const sdResult = await verifySDJWT(shareData.sdJwt);
+
+      if (!sdResult.valid) {
+        console.warn('[Verifier OID4VP] SD-JWT verification failed:', sdResult.error);
+        results.set(state, {status: 'error', verified: false, error: sdResult.error});
+        return res.status(400).json({error: 'vp_verification_failed', details: sdResult.error});
+      }
+
+      // Validate credential type if specified
+      if (acceptableCredentialTypes.length > 0) {
+        const credTypes = sdResult.payload?.vc?.type ?? [];
+        const typeMatch = acceptableCredentialTypes.some(t => credTypes.includes(t));
+        if (!typeMatch) {
+          const errMsg = `Credential type not accepted. Expected: ${acceptableCredentialTypes.join(', ')}, got: ${credTypes.join(', ')}`;
+          results.set(state, {status: 'error', verified: false, error: errMsg});
+          return res.status(400).json({error: 'credential_type_mismatch', details: errMsg});
+        }
+      }
+
+      // Validate required claims if specified
+      if (requiredClaims.length > 0) {
+        const missingClaims = requiredClaims.filter(claim => sdResult.disclosedClaims[claim] === undefined);
+        if (missingClaims.length > 0) {
+          const errMsg = `Missing required claims: ${missingClaims.join(', ')}`;
+          results.set(state, {status: 'error', verified: false, error: errMsg});
+          return res.status(400).json({error: 'missing_required_claims', details: errMsg});
+        }
+      }
+
+      const sdSchemaSlug = schemaSlugFromUrl(sdResult.payload?.credentialSchema?.id);
+      const sdTrust = await checkTrustRegistry(sdResult.issuer, sdSchemaSlug);
+
+      results.set(state, {
+        status: 'complete',
+        verified: true,
+        format: 'sd-jwt',
+        issuer: sdResult.issuer,
+        holder: sdResult.subject,
+        disclosedClaims: sdResult.disclosedClaims,
+        allClaims: sdResult.payload,
+        verifiedAt: new Date().toISOString(),
+        ...(sdTrust && !sdTrust.trusted && {
+          trustWarning: `Issuer is not accredited in the trust registry for schema "${sdSchemaSlug}"`
+        }),
+        ...(sdTrust && {trustRegistry: sdTrust})
+      });
+
+      await auditLog('VERIFY_VP', {tenantId, did: sdResult.subject, actor: 'oid4vp-share-sdjwt'});
+      console.log(`[Verifier OID4VP] Verified SD-JWT from holder share, state: ${state}`);
+      return res.status(201).json({state, status: 'verified', format: 'sd-jwt'});
+    }
+
+    return res.status(400).json({error: 'Unsupported credential format', format: shareData.format});
+  } catch (err) {
+    console.error('[Verifier OID4VP] Receive share error:', err.message);
+    res.status(500).json({error: err.message});
+  }
+}
+
 // ── POST /oid4vp/request  (auth: verifier scope) ──────────────────────────
 // Body can supply:
 //   A) presentationDefinition — full PD object (takes precedence)
@@ -447,6 +628,7 @@ export function createOid4vpRouter() {
   router.post('/oid4vp/request',      requireScope('verifier'), handleCreateRequest);
   router.get('/oid4vp/request/:id',   handleGetRequest);
   router.post('/oid4vp/response',     handleResponse);
+  router.post('/oid4vp/receive',      requireScope('verifier'), handleReceiveShare);
   router.get('/oid4vp/result/:state', requireScope('verifier'), handleResult);
   return router;
 }

@@ -3,12 +3,22 @@ import {v4 as uuidv4} from 'uuid';
 import * as vc from '@digitalbazaar/vc';
 import {Ed25519Signature2020} from '@digitalbazaar/ed25519-signature-2020';
 import {decodeJwt} from 'jose';
+import QRCode from 'qrcode';
 import {requireScope} from '../shared/tenant-auth.js';
 import {presentSDJWT} from '../shared/sd-jwt.js';
 import {getHolderKeys, getHolderKeysByDid} from './keys.js';
 import {list} from './store.js';
 import {documentLoader} from '../shared/document-loader.js';
 import {auditLog} from '../shared/key-store.js';
+
+// ── Reverse Flow: Holder-initiated credential sharing ──────────────────────
+// In-memory share storage: shareId → {tenantId, credentialId, credential, format, expiresAt, used}
+const credentialShares = new Map();
+const SHARE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function baseUrl(req) {
+  return process.env.HOLDER_BASE_URL || `${req.protocol}://${req.get('host')}`;
+}
 
 // ── Shared: fetch + decode the OID4VP request JWT ─────────────────────────
 async function fetchRequestPayload(requestUri) {
@@ -338,9 +348,129 @@ async function handleInitiateSdJwt(req, res) {
   }
 }
 
+// ── POST /oid4vp/share  (auth: holder scope) ────────────────────────────────
+// Holder-initiated: Creates a shareable credential presentation with QR code
+// Returns: {shareId, shareUri, qrCode, expiresAt}
+async function handleShare(req, res) {
+  try {
+    const tenantId = req.tenant.id;
+    const {credentialId, format = 'vc-ld'} = req.body;
+
+    if (!credentialId) return res.status(400).json({error: 'credentialId is required'});
+
+    const credentials = await list(tenantId);
+    const credential = credentials.find(c => c.id === credentialId);
+
+    if (!credential) {
+      return res.status(404).json({error: 'Credential not found'});
+    }
+
+    // Validate format matches credential
+    if (format === 'vc-ld' && credential.format !== 'vc-ld') {
+      return res.status(400).json({error: 'Credential is not VC-LD format'});
+    }
+    if (format === 'sd-jwt' && credential.format !== 'sd-jwt') {
+      return res.status(400).json({error: 'Credential is not SD-JWT format'});
+    }
+
+    const shareId = uuidv4();
+    const base = baseUrl(req);
+    const shareUri = `${base}/oid4vp/share/${shareId}`;
+    const expiresAt = Date.now() + SHARE_TTL_MS;
+
+    // Store the share
+    credentialShares.set(shareId, {
+      tenantId,
+      credentialId,
+      credential,
+      format,
+      expiresAt,
+      used: false
+    });
+
+    // Generate QR code
+    const qrcode = await QRCode.toString(shareUri, {type: 'svg', width: 300});
+
+    console.log(`[Holder OID4VP] Created share ${shareId} for credential ${credentialId}`);
+    res.status(201).json({
+      shareId,
+      shareUri,
+      qrCode: qrcode,
+      format,
+      expiresAt: new Date(expiresAt).toISOString()
+    });
+  } catch (err) {
+    console.error('[Holder OID4VP] Share error:', err.message);
+    res.status(500).json({error: err.message});
+  }
+}
+
+// ── GET /oid4vp/share/:shareId  (public — verifier fetches this) ──────────────
+// Returns the credential presentation for the verifier
+async function handleGetShare(req, res) {
+  try {
+    const shareId = req.params.shareId;
+    const share = credentialShares.get(shareId);
+
+    if (!share) {
+      return res.status(404).json({error: 'Share not found or expired'});
+    }
+
+    if (share.expiresAt <= Date.now()) {
+      credentialShares.delete(shareId);
+      return res.status(410).json({error: 'Share expired'});
+    }
+
+    const credential = share.credential;
+
+    if (share.format === 'vc-ld' && credential.vc) {
+      // For VC-LD, need to create a presentation
+      const {did: holderDid, authKey} = await getHolderKeys(share.tenantId);
+
+      const presentation = vc.createPresentation({
+        verifiableCredential: [credential.vc],
+        id: `https://example.org/presentations/${uuidv4()}`,
+        holder: holderDid
+      });
+
+      const suite = new Ed25519Signature2020({key: authKey});
+      const verifiablePresentation = await vc.signPresentation({
+        presentation,
+        suite,
+        challenge: uuidv4(),
+        domain: 'verifier.example.org',
+        documentLoader
+      });
+
+      res.json({
+        format: 'vc-ld',
+        verifiablePresentation,
+        shareId
+      });
+    } else if (share.format === 'sd-jwt' && credential.sdJwt) {
+      // For SD-JWT, return the complete token
+      res.json({
+        format: 'sd-jwt',
+        sdJwt: credential.sdJwt,
+        shareId
+      });
+    } else {
+      return res.status(400).json({error: 'Invalid credential format'});
+    }
+
+    share.used = true;
+    console.log(`[Holder OID4VP] Share ${shareId} retrieved by verifier`);
+  } catch (err) {
+    console.error('[Holder OID4VP] Get share error:', err.message);
+    res.status(500).json({error: err.message});
+  }
+}
+
 export function createOid4vpClientRouter() {
   const router = express.Router();
   router.post('/oid4vp/initiate',       requireScope('holder'), handleInitiate);
   router.post('/oid4vp/initiate-sdjwt', requireScope('holder'), handleInitiateSdJwt);
+  router.post('/oid4vp/share',          requireScope('holder'), handleShare);
+  router.get('/oid4vp/share/:shareId',  handleGetShare);
   return router;
 }

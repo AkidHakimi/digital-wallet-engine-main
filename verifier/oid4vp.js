@@ -312,6 +312,7 @@ async function handleReceiveShare(req, res) {
 
     if (shareData.format === 'sd-jwt') {
       // ── SD-JWT verification ─────────────────────────────────────────────
+      const {verifySDJWT} = await import('../shared/sd-jwt.js');
       const sdResult = await verifySDJWT(shareData.sdJwt);
 
       if (!sdResult.valid) {

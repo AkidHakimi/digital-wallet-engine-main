@@ -11,10 +11,6 @@
 //    7. A) Verifier-initiated handlers  (/oid4vp/initiate, /oid4vp/initiate-sdjwt)
 //    8. B) Holder-initiated handlers    (/oid4vp/share …)
 //    9. Router
-//
-//  Backward compatibility: every original route, function name and response
-//  field is kept. Verifiers that send no client_id get the original response
-//  format (LD domain 'verifier.example.org', SD-JWT without KB-JWT).
 // ════════════════════════════════════════════════════════════════════════════
 import express from 'express';
 import crypto from 'node:crypto';
@@ -352,12 +348,10 @@ async function normalizeRequest(payload, verification) {
     clientId     = new URL(responseUri).origin;       // legacy verifiers: fall back to response_uri origin
     verification = {verified: false, reason: 'client_id missing'};
   }
-  const {scheme, identifier} = payload.client_id
-    ? parseClientId(clientId, payload.client_id_scheme)
-    : {scheme: 'legacy-none', identifier: clientId};       // original request format, nothing to bind
+  const {scheme, identifier} = parseClientId(clientId, payload.client_id_scheme);
 
   // Bind response_uri to the authenticated verifier identity
-  if (payload.client_id && scheme === 'redirect_uri' && responseUri !== identifier) {
+  if (scheme === 'redirect_uri' && responseUri !== identifier) {
     throw new Oid4vpError('invalid_request_object', 'response_uri must equal client_id for the redirect_uri scheme');
   }
   if (scheme === 'x509_san_dns' && verification.verified && new URL(responseUri).hostname !== identifier) {
@@ -384,10 +378,7 @@ async function normalizeRequest(payload, verification) {
     responseUri,
     presentationDefinition: payload.presentation_definition ?? null,
     dcqlQuery:              payload.dcql_query ?? null,
-    expiresAt:              payload.exp ? payload.exp * 1000 : null,
-    // Verifier sent no client_id (original request format) → wallet answers in the
-    // original format too: LD domain 'verifier.example.org', SD-JWT without KB-JWT.
-    legacyClient:           !payload.client_id
+    expiresAt:              payload.exp ? payload.exp * 1000 : null
   };
 }
 
@@ -534,25 +525,15 @@ const shareStore = new MemoryShareStore();
 //  existing response endpoint and VP verification are reused unchanged.
 // ════════════════════════════════════════════════════════════════════════════
 
-// ── Reverse Flow: Holder-initiated credential sharing ──────────────────────
-// Share storage: shareId → {tenantId, credentialId, format, status, expiresAt, …}
-// (original name kept; now backed by the state-machine store in section 4)
-const credentialShares = shareStore;
-const SHARE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-
-const LEGACY_LDP_DOMAIN = 'verifier.example.org';
-
 const SHARE_CONFIG = Object.freeze({
-  defaultTtlSec:     Number(process.env.OID4VP_SHARE_TTL_SECONDS ?? SHARE_TTL_MS / 1000),   // time for verifier to scan
+  defaultTtlSec:     Number(process.env.OID4VP_SHARE_TTL_SECONDS ?? 180),   // time for verifier to scan
   minTtlSec:         30,
   maxTtlSec:         600,
   consentTtlSec:     Number(process.env.OID4VP_CONSENT_TTL_SECONDS ?? 120),
   inFlightTtlSec:    60,                                                    // guard for stuck submissions
   maxTokenFailures:  5,
   qrScheme:          'openid4vp-share',
-  // Original GET /oid4vp/share/:shareId download stays ON for existing callers.
-  // Set OID4VP_LEGACY_SHARE_GET=false once everything uses the QR + /request flow.
-  legacyGet:         process.env.OID4VP_LEGACY_SHARE_GET !== 'false',
+  legacyGet:         process.env.OID4VP_LEGACY_SHARE_GET === 'true',
   // Some verifiers still expect a fixed LD-proof domain; OID4VP says domain = client_id.
   ldpDomainOverride: process.env.OID4VP_LDP_DOMAIN_OVERRIDE ?? null
 });
@@ -569,32 +550,17 @@ const sha256        = data => crypto.createHash('sha256').update(data).digest();
 const isStringArray = v => Array.isArray(v) && v.every(x => typeof x === 'string' && x.length > 0);
 const errInfo       = err => ({code: err.code ?? 'server_error', message: err.message});
 
-// OAuth-style errors keep {error, error_description}. Unexpected errors keep the
-// ORIGINAL response shape {error: err.message, cause} unless expose=false (public endpoint).
-function sendError(res, err, {expose = true, logPrefix = '[Holder OID4VP]'} = {}) {
+function sendError(res, err, {expose = true} = {}) {
   if (err instanceof Oid4vpError) {
     const body = {error: err.code, error_description: err.message};
     if (err.details) body.details = err.details;
     return res.status(err.status).json(body);
   }
-  console.error(logPrefix, err.message, err.cause ?? '');
-  if (!expose) return res.status(500).json({error: 'server_error', error_description: 'Internal error'});
-  return res.status(500).json({error: err.message, cause: err.cause?.message ?? err.cause});
-}
-
-// ── Shared: fetch + decode the OID4VP request JWT ─────────────────────────
-// Original helper kept (same return fields); now also verifies the verifier's
-// signature and returns the full normalized request as `request`.
-async function fetchRequestPayload(requestUri) {
-  console.log('[Holder OID4VP] Fetching request JWT from:', requestUri);
-  const request = await loadAuthorizationRequest(requestUri);
-  return {
-    nonce:                  request.nonce,
-    state:                  request.state,
-    responseUri:            request.responseUri,
-    presentationDefinition: request.presentationDefinition,
-    request
-  };
+  console.error('[Holder OID4VP]', err);
+  return res.status(500).json({
+    error:             'server_error',
+    error_description: expose && !isProd ? err.message : 'Internal error'
+  });
 }
 
 async function audit(event, data) {
@@ -765,7 +731,7 @@ function matchCredentialToDescriptor(credentials, descriptor) {
 }
 
 // ── Presentation builders (always nonce- and audience-bound) ───────────────
-async function buildLdpVp({tenantId, credential, nonce, audience, legacyClient = false}) {
+async function buildLdpVp({tenantId, credential, nonce, audience}) {
   const subjectDid = credential.vc?.credentialSubject?.id;
   const {did, authKey, identityId} = subjectDid
     ? await getHolderKeysByDid(tenantId, subjectDid)
@@ -773,14 +739,14 @@ async function buildLdpVp({tenantId, credential, nonce, audience, legacyClient =
 
   const presentation = vc.createPresentation({
     verifiableCredential: [credential.vc],
-    id:     `https://example.org/presentations/${uuidv4()}`,
+    id:     `urn:uuid:${uuidv4()}`,
     holder: did
   });
   const vp = await vc.signPresentation({
     presentation,
     suite:     new Ed25519Signature2020({key: authKey}),
     challenge: nonce,
-    domain:    SHARE_CONFIG.ldpDomainOverride ?? (legacyClient ? LEGACY_LDP_DOMAIN : audience),
+    domain:    SHARE_CONFIG.ldpDomainOverride ?? audience,
     documentLoader
   });
   return {presentation: vp, holderDid: did, identityId};
@@ -804,17 +770,10 @@ function assertCnfMatchesKey(cnf, authKey) {
 
 // SD-JWT VP = <issuer-jwt>~<selected disclosures>~<KB-JWT>
 // KB-JWT {iat, aud=client_id, nonce, sd_hash} proves possession and prevents replay.
-async function buildSdJwtVp({tenantId, credential, disclosedFields, nonce, audience, legacyClient = false}) {
+async function buildSdJwtVp({tenantId, credential, disclosedFields, nonce, audience}) {
   const issuerPayload = decodeJwt(credential.sdJwt.split('~')[0]);
 
-  const presentedSdJwt = presentSDJWT(credential.sdJwt, disclosedFields);
-  if (legacyClient) {
-    // Original behaviour for verifiers that don't send client_id
-    const {did, identityId} = await getHolderKeys(tenantId);
-    return {presentation: presentedSdJwt, holderDid: did, identityId, keyBound: false};
-  }
-
-  let sdJwt = presentedSdJwt;
+  let sdJwt = presentSDJWT(credential.sdJwt, disclosedFields);
   const last = sdJwt.split('~').at(-1);
   const alreadyBound = sdJwt.includes('~') && last && last.split('.').length === 3;
   if (!alreadyBound && !sdJwt.endsWith('~')) sdJwt += '~';
@@ -878,8 +837,7 @@ async function postToResponseUri(responseUri, fields) {
   let data = {};
   try { data = r.text ? JSON.parse(r.text) : {}; } catch { data = {raw: r.text.slice(0, 300)}; }
   if (!r.ok) {
-    // original error string kept: {error: 'Response submission failed', details}
-    throw new Oid4vpError('Response submission failed', `Verifier responded with HTTP ${r.status}`, 502, {details: data});
+    throw new Oid4vpError('verifier_rejected', `Verifier responded with HTTP ${r.status}`, 502, {details: data});
   }
   return data;                                              // may carry redirect_uri
 }
@@ -897,7 +855,7 @@ async function notifyVerifierError(request, error, description) {
 }
 
 async function presentAndSubmit({tenantId, request, credential, match, disclosedFields, actor}) {
-  const common = {tenantId, credential, nonce: request.nonce, audience: request.clientId, legacyClient: request.legacyClient};
+  const common = {tenantId, credential, nonce: request.nonce, audience: request.clientId};
   const built  = match.format === 'vc-ld'
     ? await buildLdpVp(common)
     : await buildSdJwtVp({...common, disclosedFields});
@@ -926,16 +884,7 @@ async function handleInitiate(req, res) {
     const {requestUri, credentialId} = req.body ?? {};
     if (!requestUri) return res.status(400).json({error: 'requestUri is required'});
 
-    let parsed;
-    try {
-      parsed = await fetchRequestPayload(requestUri);
-    } catch (err) {
-      return res.status(err.status ?? 400).json({
-        error: err.code ?? 'invalid_request_object',
-        error_description: err.message
-      });
-    }
-    const {request} = parsed;
+    const request     = await loadAuthorizationRequest(requestUri);
     const credentials = await list(tenantId);
     let match;
 
@@ -963,7 +912,7 @@ async function handleInitiate(req, res) {
       redirectUri: verifierResponse.redirect_uri ?? null
     });
   } catch (err) {
-    sendError(res, err, {logPrefix: '[Holder OID4VP] Initiate error:'});
+    sendError(res, err);
   }
 }
 
@@ -977,16 +926,7 @@ async function handleInitiateSdJwt(req, res) {
       return res.status(400).json({error: 'disclosedFields must be an array of strings'});
     }
 
-    let parsed;
-    try {
-      parsed = await fetchRequestPayload(requestUri);
-    } catch (err) {
-      return res.status(err.status ?? 400).json({
-        error: err.code ?? 'invalid_request_object',
-        error_description: err.message
-      });
-    }
-    const {request} = parsed;
+    const request     = await loadAuthorizationRequest(requestUri);
     const credentials = await list(tenantId);
     let match;
 
@@ -994,7 +934,7 @@ async function handleInitiateSdJwt(req, res) {
       const found = credentials.find(c => c.id === credentialId && c.format === 'sd-jwt');
       if (!found) throw new Oid4vpError('no_matching_credential', `SD-JWT credential not found: ${credentialId}`, 404);
       const requested = extractConstraints(descriptorFor(request)).requiredClaims;
-      match = {credential: found, format: 'sd-jwt', requestedFormat: 'vc+sd-jwt', requestedClaims: requested, disclosedFields: []};
+      match = {credential: found, format: 'sd-jwt', requestedFormat: 'vc+sd-jwt', requestedClaims: requested, disclosedFields: requested};
     } else {
       match = matchCredentialToDescriptor(credentials, descriptorFor(request));
       if (!match || match.format !== 'sd-jwt') {
@@ -1014,7 +954,7 @@ async function handleInitiateSdJwt(req, res) {
       redirectUri: verifierResponse.redirect_uri ?? null
     });
   } catch (err) {
-    sendError(res, err, {logPrefix: '[Holder OID4VP] SD-JWT initiate error:'});
+    sendError(res, err);
   }
 }
 
@@ -1086,25 +1026,19 @@ async function handleShare(req, res) {
     const tenantId = req.tenant.id;
     const {credentialId, format: reqFormat, disclosedFields, mode = 'confirm', allowedVerifiers, ttlSeconds} = req.body ?? {};
 
-    if (!credentialId) return res.status(400).json({error: 'credentialId is required'});
+    if (!credentialId) throw new Oid4vpError('invalid_request', 'credentialId is required');
     if (!['confirm', 'auto'].includes(mode)) throw new Oid4vpError('invalid_request', "mode must be 'confirm' or 'auto'");
     if (allowedVerifiers !== undefined && !isStringArray(allowedVerifiers)) {
       throw new Oid4vpError('invalid_request', 'allowedVerifiers must be an array of client_id strings');
     }
 
     const credential = (await list(tenantId)).find(c => c.id === credentialId);
-    if (!credential) {
-      return res.status(404).json({error: 'Credential not found'});
-    }
+    if (!credential) throw new Oid4vpError('not_found', 'Credential not found', 404);
 
     const format = reqFormat ?? credential.format;
     if (!['vc-ld', 'sd-jwt'].includes(format)) throw new Oid4vpError('invalid_request', `Unsupported format: ${format}`);
-    // Validate format matches credential
-    if (format === 'vc-ld' && credential.format !== 'vc-ld') {
-      return res.status(400).json({error: 'Credential is not VC-LD format'});
-    }
-    if (format === 'sd-jwt' && credential.format !== 'sd-jwt') {
-      return res.status(400).json({error: 'Credential is not SD-JWT format'});
+    if (format !== credential.format) {
+      throw new Oid4vpError('invalid_request', `Credential is not ${format === 'vc-ld' ? 'VC-LD' : 'SD-JWT'} format`);
     }
 
     if (disclosedFields !== undefined) {
@@ -1160,7 +1094,7 @@ async function handleShare(req, res) {
       eventsUri: `${shareUri}/events`
     });
   } catch (err) {
-    sendError(res, err, {logPrefix: '[Holder OID4VP] Share error:'});
+    sendError(res, err);
   }
 }
 
@@ -1375,67 +1309,42 @@ async function handleCancel(req, res) {
   }
 }
 
-// ── GET /oid4vp/share/:shareId  (public — verifier fetches this) ──────────────
-// ORIGINAL download flow, kept for existing callers (e.g. POST /oid4vp/receive with
-// an https shareUri). Returns the credential presentation for the verifier.
-// Security note: no verifier authentication / nonce binding — prefer the QR + /request
-// flow and set OID4VP_LEGACY_SHARE_GET=false when nothing depends on this anymore.
-async function handleGetShare(req, res) {
+// GET /oid4vp/share/:shareId — legacy bearer-download flow (disabled by default).
+// Kept only for migrating old verifiers: no verifier auth, wallet-chosen challenge.
+async function handleLegacyGetShare(req, res) {
+  res.set('Cache-Control', 'no-store');
+  if (!SHARE_CONFIG.legacyGet) {
+    return res.status(410).json({
+      error: 'deprecated',
+      error_description: 'Scan the QR with an OID4VP verifier: POST a signed request to /oid4vp/share/:shareId/request'
+    });
+  }
   try {
-    const shareId = req.params.shareId;
-    if (!SHARE_CONFIG.legacyGet) {
-      return res.status(410).json({
-        error: 'deprecated',
-        error_description: 'Scan the QR with an OID4VP verifier: POST a signed request to /oid4vp/share/:shareId/request'
-      });
-    }
-
-    const share = UUID_RE.test(shareId) ? await credentialShares.expireIfDue(shareId) : null;
-
-    if (!share) {
-      return res.status(404).json({error: 'Share not found or expired'});
-    }
-
-    if (share.status === S.EXPIRED || share.expiresAt <= Date.now()) {
-      return res.status(410).json({error: 'Share expired'});
-    }
-
-    // Allowed: a fresh share, or repeat downloads of a share already served by this endpoint
-    const repeat = share.status === S.SUBMITTED && share.result?.legacy;
-    if (share.status !== S.CREATED && !repeat) {
-      return res.status(409).json({error: `Share is ${share.status}`});
-    }
+    const {shareId} = req.params;
+    if (!UUID_RE.test(shareId)) return res.status(404).json({error: 'Share not found or expired'});
+    const share = await shareStore.expireIfDue(shareId);
+    if (!share) return res.status(404).json({error: 'Share not found or expired'});
+    if (share.status === S.EXPIRED) return res.status(410).json({error: 'Share expired'});
+    const claimed = await shareStore.transition(shareId, S.CREATED, S.SUBMITTING, {});
+    if (!claimed) return res.status(409).json({error: 'Share already used'});
 
     const credential = (await list(share.tenantId)).find(c => c.id === share.credentialId);
     if (!credential) {
-      return res.status(404).json({error: 'Share not found or expired'});
+      await shareStore.transition(shareId, S.SUBMITTING, S.FAILED, {});
+      return res.status(410).json({error: 'Credential no longer available'});
     }
-
     let body;
-    if (share.format === 'vc-ld' && credential.vc) {
-      // For VC-LD, need to create a presentation
-      const {presentation: verifiablePresentation} = await buildLdpVp({
-        tenantId: share.tenantId, credential, nonce: uuidv4(), audience: LEGACY_LDP_DOMAIN, legacyClient: true
-      });
-      body = {format: 'vc-ld', verifiablePresentation, shareId};
-    } else if (share.format === 'sd-jwt' && credential.sdJwt) {
-      // For SD-JWT, return the complete token (or only the holder-selected fields, if set)
-      const sdJwt = share.disclosedFields ? presentSDJWT(credential.sdJwt, share.disclosedFields) : credential.sdJwt;
-      body = {format: 'sd-jwt', sdJwt, shareId};
+    if (share.format === 'vc-ld') {
+      const {presentation} = await buildLdpVp({tenantId: share.tenantId, credential, nonce: uuidv4(), audience: 'legacy-share'});
+      body = {format: 'vc-ld', verifiablePresentation: presentation, shareId};
     } else {
-      return res.status(400).json({error: 'Invalid credential format'});
+      body = {format: 'sd-jwt', sdJwt: presentSDJWT(credential.sdJwt, share.disclosedFields ?? []), shareId};
     }
-
-    if (!repeat) {
-      await credentialShares.transition(shareId, S.CREATED, S.SUBMITTED, {
-        result: {legacy: true, submittedAt: new Date().toISOString()}
-      });
-    }
+    await shareStore.transition(shareId, S.SUBMITTING, S.SUBMITTED, {result: {legacy: true}});
+    console.warn(`[Holder OID4VP] LEGACY share ${shareId} downloaded without verifier authentication`);
     res.json(body);
-    console.log(`[Holder OID4VP] Share ${shareId} retrieved by verifier`);
   } catch (err) {
-    console.error('[Holder OID4VP] Get share error:', err.message);
-    res.status(500).json({error: err.message});
+    sendError(res, err);
   }
 }
 
@@ -1472,12 +1381,12 @@ export function createOid4vpClientRouter() {
   router.post('/oid4vp/share/:shareId/consent',   requireScope('holder'), handleConsent);
   router.delete('/oid4vp/share/:shareId',         requireScope('holder'), handleCancel);
   router.post('/oid4vp/share/:shareId/request',   ...parseBody, handleVerifierRequest);   // public, token-protected
-  router.get('/oid4vp/share/:shareId',            handleGetShare);
+  router.get('/oid4vp/share/:shareId',            handleLegacyGetShare);
   return router;
 }
 
 // Exported for unit tests
 export const _internals = {
   extractConstraints, dcqlToDescriptor, matchCredentialToDescriptor, planDisclosure, buildResponseFields,
-  loadAuthorizationRequest, fetchRequestPayload, multibaseEd25519ToJwk, base58Decode, shareStore, OID4VP_CONFIG
+  loadAuthorizationRequest, multibaseEd25519ToJwk, base58Decode, shareStore, OID4VP_CONFIG
 };

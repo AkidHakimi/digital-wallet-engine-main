@@ -2317,9 +2317,15 @@ async function createOid4vpRequest() {
       ['Credential Type', credentialType  || '(any)'],
       ['Format',          credentialFormat || '(any)'],
       ['Required Claims', requiredClaims?.join(', ') || '(none)'],
+      ['Schema',          r.schema ? `${r.schema.slug} (${r.schema.credentialType})` : '(any)'],
     ]));
     onVpRequestCreated(r.state, r.requestUri, r.openid4vpUri);
-  } catch(e) { appendLog('v-oid4vp',errMsg(e),'err'); setStatus('v-oid4vp',e.message,'error'); }
+  } catch(e) {
+    // e.g. claims_not_in_schema — show which claims the credential type does define
+    const allowed = e.data?.allowedClaims?.length ? ` Allowed claims: ${e.data.allowedClaims.join(', ')}` : '';
+    appendLog('v-oid4vp',errMsg(e),'err');
+    setStatus('v-oid4vp',errMsg(e) + allowed,'error');
+  }
 }
 async function pollOid4vpResult() {
   const state = document.getElementById('v-oid4vp-state').value.trim();

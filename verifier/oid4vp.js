@@ -13,6 +13,9 @@ import {getVerifierKeys} from './keys.js';
 import {documentLoader} from '../shared/document-loader.js';
 import {decodeList, getBit} from '../shared/status-list.js';
 import {auditLog} from '../shared/key-store.js';
+import {
+  RequestConstraintError, validateRequestConstraints, validateDefinition
+} from './credential-checks.js';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  OID4VP verifier
@@ -327,12 +330,18 @@ async function createAuthorizationRequest({tenantId, base, options = {}, flow = 
     schemaUrl
   } = options;
 
+  // Credential type, schema URL and required claims must tally, otherwise no
+  // request is created (throws RequestConstraintError → 4xx).
+  const checked = presentationDefinition
+    ? await validateDefinition(presentationDefinition)
+    : await validateRequestConstraints({credentialType, schemaUrl, requiredClaims});
+
   const definition = presentationDefinition ?? buildPresentationDefinition({
-    credentialType,
+    credentialType:  checked.credentialType ?? undefined,
     issuerDid:       constraintIssuer,
     credentialFormat,
-    requiredClaims:  requiredClaims ?? [],
-    schemaUrl
+    requiredClaims:  checked.requiredClaims,
+    schemaUrl:       checked.schemaUrl ?? undefined
   });
 
   const requestId   = uuidv4();
@@ -376,7 +385,7 @@ async function createAuthorizationRequest({tenantId, base, options = {}, flow = 
   results.set(state, {status: 'pending', flow});
 
   const openid4vpUri = `openid4vp://?request_uri=${encodeURIComponent(requestUri)}&client_id=${encodeURIComponent(clientId)}`;
-  return {requestId, state, nonce, requestUri, openid4vpUri, definition};
+  return {requestId, state, nonce, requestUri, openid4vpUri, definition, checked};
 }
 
 // ── GET /.well-known/openid-configuration ─────────────────────────────────
@@ -418,12 +427,27 @@ async function handleCreateRequest(req, res) {
       schemaUrl
     } = req.body ?? {};
 
+    // Credential type, schema URL and required claims must tally, otherwise no
+    // request is created.
+    let checked;
+    try {
+      checked = presentationDefinition
+        ? await validateDefinition(presentationDefinition)
+        : await validateRequestConstraints({credentialType, schemaUrl, requiredClaims});
+    } catch (err) {
+      if (err instanceof RequestConstraintError) {
+        console.warn(`[Verifier OID4VP] Request rejected: ${err.code} — ${err.message}`);
+        return res.status(err.status).json(err.toBody());
+      }
+      throw err;
+    }
+
     const definition = presentationDefinition ?? buildPresentationDefinition({
-      credentialType,
+      credentialType:  checked.credentialType ?? undefined,
       issuerDid:       constraintIssuer,
       credentialFormat,
-      requiredClaims:  requiredClaims ?? [],
-      schemaUrl
+      requiredClaims:  checked.requiredClaims,
+      schemaUrl:       checked.schemaUrl ?? undefined
     });
 
     const requestId  = uuidv4();
@@ -466,7 +490,12 @@ async function handleCreateRequest(req, res) {
     const qrcode       = await QRCode.toString(openid4vpUri, {type: 'svg', width: 300});
 
     console.log(`[Verifier OID4VP] Created request ${requestId}, state ${state}`);
-    res.status(201).json({requestId, state, requestUri, openid4vpUri, qrcode});
+    res.status(201).json({
+      requestId, state, requestUri, openid4vpUri, qrcode,
+      credentialType: checked.credentialType,
+      requiredClaims: checked.requiredClaims,
+      ...(checked.schema && {schema: checked.schema})
+    });
   } catch (err) {
     console.error('[Verifier OID4VP] Create request error:', err.message);
     res.status(500).json({error: err.message});
@@ -843,7 +872,10 @@ async function handleScanHolderQr(req, res) {
   } catch (err) {
     if (state) failSession(state, err.code ?? 'server_error', err.message);
     console.error('[Verifier OID4VP] Scan holder QR error:', err.message);
-    res.status(err.status ?? 500).json({state: state ?? null, error: err.code ?? 'server_error', error_description: err.message});
+    res.status(err.status ?? 500).json({
+      state: state ?? null, error: err.code ?? 'server_error', error_description: err.message,
+      ...(err instanceof RequestConstraintError && err.extra)
+    });
   }
 }
 
@@ -863,6 +895,24 @@ async function handleReceiveShare(req, res) {
 
     if (!shareUri) {
       return res.status(400).json({error: 'shareUri is required'});
+    }
+
+    // Required claims must be defined by (one of) the acceptable credential types
+    if (requiredClaims.length || acceptableCredentialTypes.length) {
+      const types = acceptableCredentialTypes.length ? acceptableCredentialTypes : [null];
+      let firstError = null;
+      let tallied    = false;
+      for (const credentialType of types) {
+        try {
+          await validateRequestConstraints({credentialType, requiredClaims});
+          tallied = true;
+          break;
+        } catch (err) {
+          if (!(err instanceof RequestConstraintError)) throw err;
+          firstError ??= err;
+        }
+      }
+      if (!tallied) return res.status(firstError.status).json(firstError.toBody());
     }
 
     // Fetch the credential from the holder's share

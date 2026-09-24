@@ -10,6 +10,7 @@ import {
 } from './keys.js';
 import {assignStatusIndex, revokeCredentialStatus, getStatusListVc} from '../shared/status-list.js';
 import {loadSchema, validateCredentialSubject, saveSchema} from '../shared/schema-validator.js';
+import {credentialTypeFor} from '../shared/schema-registry.js';
 import {issueSDJWT} from '../shared/sd-jwt.js';
 import {auditLog} from '../shared/key-store.js';
 import {resolveExpiration} from '../shared/expiry.js';
@@ -101,7 +102,7 @@ export async function issueCredential(req, res) {
     const tenantId = req.tenant.id;
     const {
       holderDid, issuerDid: requestedIssuerDid = null, format = 'vc-ld', disclosableClaims = [],
-      schemaSlug = null, schemaVersion = null, credentialType = null,
+      schemaSlug = null, schemaVersion = null, credentialType: requestedCredentialType = null,
       expiresInDays = null, expirationDate: requestedExpirationDate = null
     } = req.body;
     const subject = req.body.subject || req.body.employee;
@@ -119,12 +120,23 @@ export async function issueCredential(req, res) {
 
     const {did: issuerDid, assertionKey, identityId: resolvedIdentityId} = await getIssuerKeys(tenantId, requestedIssuerDid);
 
-    // Schema validation
+    // Schema validation + credential type must tally with the schema
     let credentialSchemaField = undefined;
+    let credentialType        = requestedCredentialType;
     if (schemaSlug) {
       const schemaRow = await loadSchema(tenantId, schemaSlug, schemaVersion);
       const {valid, errors} = validateCredentialSubject(schemaRow, subject);
       if (!valid) return res.status(400).json({error: 'Schema validation failed', errors});
+
+      const expectedType = credentialTypeFor(schemaRow.slug, schemaRow.schema_json);
+      if (credentialType && credentialType !== expectedType) {
+        return res.status(400).json({
+          error:   'credential_type_schema_mismatch',
+          details: `Schema "${schemaRow.slug}" defines credential type "${expectedType}", not "${credentialType}"`,
+          expectedCredentialType: expectedType
+        });
+      }
+      credentialType        = expectedType;
       credentialSchemaField = {id: schemaRow.schema_id, type: 'JsonSchema'};
     }
 
@@ -138,6 +150,7 @@ export async function issueCredential(req, res) {
         assertionKey,
         disclosableClaims,
         credentialSchema: credentialSchemaField ?? null,
+        credentialType,
         expirationDate:   expiration,
       });
       const credentialId = `${baseUrl(req)}/credentials/${uuidv4()}`;
@@ -327,7 +340,7 @@ export async function registerSchema(req, res) {
     const {slug, version = '1.0.0', schemaJson} = req.body;
     if (!slug || !schemaJson) return res.status(400).json({error: 'slug and schemaJson are required'});
     const schemaId = await saveSchema(tenantId, slug, version, schemaJson, baseUrl(req));
-    res.status(201).json({schemaId, slug, version});
+    res.status(201).json({schemaId, slug, version, credentialType: credentialTypeFor(slug, schemaJson)});
   } catch (err) {
     res.status(500).json({error: err.message});
   }
@@ -353,10 +366,12 @@ export async function listSchemas(req, res) {
   try {
     const pool   = getPool();
     const [rows] = await pool.query(
-      'SELECT id, slug, schema_id, version, created_at FROM credential_schemas WHERE tenant_id = ? ORDER BY slug ASC',
+      'SELECT id, slug, schema_id, version, schema_json, created_at FROM credential_schemas WHERE tenant_id = ? ORDER BY slug ASC',
       [req.tenant.id]
     );
-    res.json({schemas: rows});
+    res.json({schemas: rows.map(({schema_json, ...r}) => ({
+      ...r, credentialType: credentialTypeFor(r.slug, schema_json)
+    }))});
   } catch (err) {
     res.status(500).json({error: err.message});
   }

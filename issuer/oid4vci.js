@@ -12,6 +12,7 @@ import {assignStatusIndex} from '../shared/status-list.js';
 import {auditLog} from '../shared/key-store.js';
 import {getPool} from '../shared/db.js';
 import {loadSchema, validateCredentialSubject} from '../shared/schema-validator.js';
+import {credentialTypeFor} from '../shared/schema-registry.js';
 import {resolveExpiration} from '../shared/expiry.js';
 
 // ── In-memory state (POC — single process) ────────────────────────────────
@@ -80,7 +81,7 @@ async function handleCreateOffer(req, res) {
     const tenantId = req.tenant.id;
     const {
       format = 'ldp_vc', disclosableClaims = [], schemaSlug = null, schemaVersion = null,
-      credentialType = null, offerTtlMs = OFFER_TTL_MS, issuerDid = null,
+      credentialType: requestedCredentialType = null, offerTtlMs = OFFER_TTL_MS, issuerDid = null,
       expiresInDays = null, expirationDate = null
     } = req.body;
     const subject = req.body.subject || req.body.employee;
@@ -92,10 +93,22 @@ async function handleCreateOffer(req, res) {
       return res.status(400).json({error: 'format must be ldp_vc or vc+sd-jwt'});
     }
 
+    // Schema validation + credential type must tally with the schema
+    let credentialType = requestedCredentialType;
     if (schemaSlug) {
       const schemaRow = await loadSchema(tenantId, schemaSlug, schemaVersion);
       const {valid, errors} = validateCredentialSubject(schemaRow, subject);
       if (!valid) return res.status(400).json({error: 'Schema validation failed', errors});
+
+      const expectedType = credentialTypeFor(schemaRow.slug, schemaRow.schema_json);
+      if (credentialType && credentialType !== expectedType) {
+        return res.status(400).json({
+          error:   'credential_type_schema_mismatch',
+          details: `Schema "${schemaRow.slug}" defines credential type "${expectedType}", not "${credentialType}"`,
+          expectedCredentialType: expectedType
+        });
+      }
+      credentialType = expectedType;
     }
 
     // Fail fast on a bad expiry so the caller doesn't get a valid-looking
@@ -282,6 +295,7 @@ async function handleCredential(req, res) {
         holderDid,
         assertionKey,
         disclosableClaims,
+        credentialType,
         expirationDate:  expiration
       });
       const credentialId = `${baseUrl(req)}/credentials/${uuidv4()}`;

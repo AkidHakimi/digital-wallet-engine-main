@@ -87,7 +87,7 @@ async function handleCreateOffer(req, res) {
     const subject = withoutBlankValues(req.body.subject || req.body.employee);
 
     if (!Object.keys(subject).length) {
-      return res.status(400).json({error: 'subject data is required (all subject fields were empty)'});
+      return res.status(400).json({error: 'All credential fields are empty. Fill in the credential details (at least the fields the schema requires) before creating the offer.'});
     }
     if (!['ldp_vc', 'vc+sd-jwt'].includes(format)) {
       return res.status(400).json({error: 'format must be ldp_vc or vc+sd-jwt'});

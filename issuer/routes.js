@@ -118,7 +118,9 @@ export async function issueCredential(req, res) {
     const subject = withoutBlankValues(req.body.subject || req.body.employee);
 
     if (!holderDid || !Object.keys(subject).length) {
-      return res.status(400).json({error: 'holderDid and subject data are required (all subject fields were empty)'});
+      return res.status(400).json({error: holderDid
+        ? 'All credential fields are empty. Fill in the credential details (at least the fields the schema requires) before issuing.'
+        : 'holderDid is required'});
     }
 
     let expiration;

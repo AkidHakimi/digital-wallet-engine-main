@@ -145,7 +145,9 @@ export function presentSDJWT(sdJwt, disclosedFields) {
   return [jwt, ...selected].join('~') + '~';
 }
 
-// Verifies an SD-JWT. Returns {valid, payload, disclosedClaims, error}.
+const JWT_STRUCTURAL_CLAIMS = new Set(['iss', 'sub', 'iat', 'nbf', 'exp', 'jti', 'aud', 'vct', 'status', 'credentialSchema', 'vc']);
+
+// Verifies an SD-JWT. Returns {valid, payload, disclosedClaims, subjectClaims, error}.
 export async function verifySDJWT(sdJwt, {issuerDid = null} = {}) {
   try {
     const parts       = sdJwt.split('~').filter(Boolean);
@@ -190,8 +192,10 @@ export async function verifySDJWT(sdJwt, {issuerDid = null} = {}) {
     // Build full visible payload (non-_sd claims + disclosed)
     const {_sd, _sd_alg, cnf, ...baseClaims} = verified;
     const fullClaims = {...baseClaims, ...disclosedClaims};
+    // Subject data the holder is presenting: always-visible claims + disclosed ones
+    const subjectClaims = Object.fromEntries(Object.entries(fullClaims).filter(([k]) => !JWT_STRUCTURAL_CLAIMS.has(k)));
 
-    return {valid: true, payload: fullClaims, disclosedClaims, issuer: verified.iss, subject: verified.sub};
+    return {valid: true, payload: fullClaims, disclosedClaims, subjectClaims, issuer: verified.iss, subject: verified.sub};
   } catch (err) {
     return {valid: false, error: err.message};
   }

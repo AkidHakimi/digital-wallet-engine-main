@@ -588,7 +588,7 @@ async function handleResponse(req, res) {
         ...sdResult.payload,
         type:              sdResult.payload?.vc?.type ?? (sdResult.payload?.vct ? [sdResult.payload.vct] : []),
         issuer:            sdResult.issuer,
-        credentialSubject: sdResult.disclosedClaims,
+        credentialSubject: sdResult.subjectClaims,
         _isSDJWT:          true
       };
       const {satisfied, failures} = assertSatisfiesDefinition(claims, definition);
@@ -609,7 +609,7 @@ async function handleResponse(req, res) {
         keyBinding:      kb.status,
         issuer:          sdResult.issuer,
         holder:          sdResult.subject,
-        disclosedClaims: sdResult.disclosedClaims,
+        disclosedClaims: sdResult.subjectClaims,
         allClaims:       sdResult.payload,
         verifiedAt:      new Date().toISOString(),
         ...(sdTrust && !sdTrust.trusted && {
@@ -1035,7 +1035,7 @@ async function handleReceiveShare(req, res) {
 
       // Validate credential type if specified
       if (acceptableCredentialTypes.length > 0) {
-        const credTypes = sdResult.payload?.vc?.type ?? [];
+        const credTypes = sdResult.payload?.vc?.type ?? (sdResult.payload?.vct ? [sdResult.payload.vct] : []);
         const typeMatch = acceptableCredentialTypes.some(t => credTypes.includes(t));
         if (!typeMatch) {
           const errMsg = `Credential type not accepted. Expected: ${acceptableCredentialTypes.join(', ')}, got: ${credTypes.join(', ')}`;
@@ -1046,7 +1046,7 @@ async function handleReceiveShare(req, res) {
 
       // Validate required claims if specified
       if (requiredClaims.length > 0) {
-        const missingClaims = requiredClaims.filter(claim => sdResult.disclosedClaims[claim] === undefined);
+        const missingClaims = requiredClaims.filter(claim => sdResult.subjectClaims[claim] === undefined);
         if (missingClaims.length > 0) {
           const errMsg = `Missing required claims: ${missingClaims.join(', ')}`;
           results.set(state, {status: 'error', verified: false, error: errMsg});
@@ -1063,7 +1063,7 @@ async function handleReceiveShare(req, res) {
         format: 'sd-jwt',
         issuer: sdResult.issuer,
         holder: sdResult.subject,
-        disclosedClaims: sdResult.disclosedClaims,
+        disclosedClaims: sdResult.subjectClaims,
         allClaims: sdResult.payload,
         verifiedAt: new Date().toISOString(),
         ...(sdTrust && !sdTrust.trusted && {

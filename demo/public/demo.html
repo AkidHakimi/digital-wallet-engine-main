@@ -1191,8 +1191,9 @@ function makeJson(data) {
 function short(s, n=50) { return s && s.length>n ? s.slice(0,n)+'…' : (s??'—'); }
 
 function errMsg(err) {
-  const d = err.data?.details ?? err.data?.error;
-  return err.message + (d ? ` — ${typeof d==='string'?d:JSON.stringify(d)}` : '');
+  const d = err.data?.details ?? err.data?.error_description ?? err.data?.error;
+  const detail = d ? (typeof d === 'string' ? d : JSON.stringify(d)) : '';
+  return detail && detail !== err.message ? `${err.message} — ${detail}` : err.message;
 }
 
 // ══ Field selector ═══════════════════════════════════════════════════════
@@ -2088,13 +2089,22 @@ async function fetchOid4vpConstraints() {
   try {
     // Resolve the JWT fetch URL from openid4vp:// scheme or use directly
     let fetchUrl = requestUri;
+    if (/^openid-credential-offer:/i.test(requestUri) || /[?&]credential_offer(_uri)?=/.test(requestUri)) {
+      throw new Error('This is a credential offer (OID4VCI, used to RECEIVE a credential), not a presentation request. ' +
+        'Paste it into "OID4VCI — Receive Credential" instead; for presenting, use the openid4vp:// link from the Verifier tab\'s Create Request.');
+    }
     if (requestUri.startsWith('openid4vp://')) {
       const params = new URLSearchParams(requestUri.split('?')[1] ?? '');
       fetchUrl = params.get('request_uri');
-      if (!fetchUrl) throw new Error('request_uri not found in openid4vp:// URI');
+      if (!fetchUrl) throw new Error('request_uri not found in openid4vp:// URI — copy the full link from the verifier.');
+    } else if (!/^https?:\/\//i.test(requestUri)) {
+      throw new Error('Not a presentation request. Expected an openid4vp:// link or the https URL of a request object.');
     }
 
-    const jwtRes = await fetch(fetchUrl);
+    let jwtRes;
+    try { jwtRes = await fetch(fetchUrl); }
+    catch { throw new Error(`Could not reach the verifier at ${new URL(fetchUrl).origin} — is it running?`); }
+    if (jwtRes.status === 404) throw new Error('The verifier no longer has this request (it expired or the verifier was restarted). Create a new request.');
     if (!jwtRes.ok) throw new Error(`Failed to fetch request JWT: ${jwtRes.status}`);
     const jwt = await jwtRes.text();
 

@@ -275,6 +275,8 @@ async function verifyRequestObject(jwt) {
   }
 }
 
+const PRESENTATION_SCHEMES = new Set(['openid4vp', 'openid', 'haip', 'eudi-openid4vp', 'mdoc-openid4vp']);
+
 // ── Public entry point ────────────────────────────────────────────────────
 // input: string (openid4vp://… URI or https URL of the request object)
 //     or {authorization_request?, request?, request_uri?, client_id?}
@@ -287,20 +289,43 @@ async function loadAuthorizationRequest(input) {
 
   if (src.authorization_request) {
     const raw = String(src.authorization_request).trim();
+    if (!raw) throw new Oid4vpError('invalid_request', 'No presentation request supplied');
     if (/^https?:\/\//i.test(raw)) {
       requestUri = raw;                                 // legacy: direct link to the request object
     } else {
-      const params  = new URLSearchParams(raw.split('?')[1] ?? '');
+      const scheme = raw.match(/^([a-z][a-z0-9+.-]*):/i)?.[1]?.toLowerCase();
+      const params = new URLSearchParams(raw.split('?')[1] ?? '');
+      if (scheme === 'openid-credential-offer' || params.has('credential_offer') || params.has('credential_offer_uri')) {
+        throw new Oid4vpError('invalid_request',
+          'This is a credential offer (OID4VCI, used to RECEIVE a credential), not a presentation request. ' +
+          'Use "OID4VCI — Receive Credential" for it; presenting needs an openid4vp:// request from the verifier.');
+      }
+      if (!PRESENTATION_SCHEMES.has(scheme)) {
+        throw new Oid4vpError('invalid_request',
+          `Unrecognised request URI scheme "${scheme ?? raw.slice(0, 20)}". Expected an openid4vp:// link or the https URL of a request object.`);
+      }
       requestUri    = params.get('request_uri') ?? requestUri;
       requestJwt    = params.get('request') ?? requestJwt;
       outerClientId = params.get('client_id') ?? outerClientId;
-      if (!requestUri && !requestJwt) byValue = Object.fromEntries(params);
+      if (!requestUri && !requestJwt) {
+        if (!params.has('response_type') && !params.has('nonce')) {
+          throw new Oid4vpError('invalid_request',
+            'The link has no request_uri or request parameter, so there is no presentation request to load. ' +
+            'Copy the full openid4vp:// link from the verifier.');
+        }
+        byValue = Object.fromEntries(params);
+      }
     }
   }
 
   if (!requestJwt && requestUri) {
     console.log('[OID4VP] Fetching request object from:', requestUri);
     const r = await safeFetch(requestUri, {headers: {accept: 'application/oauth-authz-req+jwt, application/jwt'}});
+    if (r.status === 404 || r.status === 410) {
+      throw new Oid4vpError('invalid_request_uri',
+        'The verifier no longer has this request (requests expire after 10 minutes, and are lost if the verifier restarts). ' +
+        'Create a new request on the verifier and use the new link.', 400);
+    }
     if (!r.ok) throw new Oid4vpError('invalid_request_uri', `Failed to fetch request object: HTTP ${r.status}`, 502);
     requestJwt = r.text.trim();
   }
@@ -333,8 +358,11 @@ async function normalizeRequest(payload, verification) {
   const {nonce} = payload;
   const responseUri = payload.response_uri;
 
-  if (!nonce || !responseUri) {
-    throw new Oid4vpError('invalid_request_object', 'Missing nonce or response_uri in request object');
+  const missing = [!nonce && 'nonce', !responseUri && 'response_uri'].filter(Boolean);
+  if (missing.length) {
+    throw new Oid4vpError('invalid_request_object',
+      `The presentation request is missing ${missing.join(' and ')}, so the wallet cannot answer it. ` +
+      'Make sure the link came from the verifier\'s "Create Request".');
   }
   if (payload.response_type && !String(payload.response_type).split(' ').includes('vp_token')) {
     throw new Oid4vpError('unsupported_response_type', 'Only response_type=vp_token is supported');

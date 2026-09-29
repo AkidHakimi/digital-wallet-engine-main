@@ -55,7 +55,7 @@ export async function keypairToJWK(keyPair) {
 // Issues an SD-JWT credential.
 // disclosableClaims: array of claim names the holder can selectively disclose.
 // All other claims are embedded directly in the JWT payload.
-export async function issueSDJWT({claims, holderDid, assertionKey, disclosableClaims = [], credentialSchema = null, expirationDate}) {
+export async function issueSDJWT({claims, holderDid, assertionKey, disclosableClaims = [], credentialSchema = null, credentialType = null, expirationDate}) {
   const {privateKey, x} = await keypairToJWK(assertionKey);
 
   const disclosures = [];
@@ -81,6 +81,7 @@ export async function issueSDJWT({claims, holderDid, assertionKey, disclosableCl
     _sd:          sdHashes,
     _sd_alg:      'sha-256',
     cnf:          {jwk: {kty: 'OKP', crv: 'Ed25519', x}},
+    ...(credentialType && {vct: credentialType}),
     ...(credentialSchema && {credentialSchema}),
   };
 

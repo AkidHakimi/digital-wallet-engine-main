@@ -86,8 +86,9 @@ async function run() {
 
   const {verifiableCredential} = await post(`${ISSUER}/issue`, {
     holderDid,
+    schemaSlug: 'employee-badge',
     employee: {
-      id:          'EMP-2024-001',
+      employeeId:  'EMP-2024-001',
       name:        'Alice Smith',
       department:  'Engineering',
       position:    'Senior Software Engineer',
@@ -121,7 +122,7 @@ async function run() {
   separator('Step 5 │ Holder creates a signed Verifiable Presentation');
 
   const {verifiablePresentation} = await post(`${HOLDER}/present`, {
-    credentialId: verifiableCredential.id,
+    credentialId: stored.id,
     challenge,
     domain
   });

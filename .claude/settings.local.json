@@ -20,7 +20,10 @@
       "Bash(node --input-type=module -e \"import {assignStatusIndex} from './shared/status-list.js'; console.log\\('ok:', typeof assignStatusIndex\\);\")",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Documents\\\\NodeJS\\\\digital-wallet\" -Recurse -Force)",
       "Bash(Select-Object FullName)",
-      "Bash(Head -50)"
+      "Bash(Head -50)",
+      "Bash(awk -F= '{print $1, length\\($2\\)}')",
+      "Bash(git checkout *)",
+      "PowerShell($env:DB_NAME=\"digitalwallet_demo\"; node db/migrate.js 2>&1)"
     ]
   }
 }

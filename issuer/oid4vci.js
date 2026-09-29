@@ -94,7 +94,8 @@ async function handleCreateOffer(req, res) {
     }
 
     // Schema validation + credential type must tally with the schema
-    let credentialType = requestedCredentialType;
+    let credentialType   = requestedCredentialType;
+    let credentialSchema = null;
     if (schemaSlug) {
       const schemaRow = await loadSchema(tenantId, schemaSlug, schemaVersion);
       const {valid, errors} = validateCredentialSubject(schemaRow, subject);
@@ -108,7 +109,8 @@ async function handleCreateOffer(req, res) {
           expectedCredentialType: expectedType
         });
       }
-      credentialType = expectedType;
+      credentialType   = expectedType;
+      credentialSchema = {id: schemaRow.schema_id, type: 'JsonSchema'};
     }
 
     // Fail fast on a bad expiry so the caller doesn't get a valid-looking
@@ -128,7 +130,7 @@ async function handleCreateOffer(req, res) {
     // holderDid is intentionally absent — the holder proves their DID via the
     // binding proof JWT in the credential request (OID4VCI §7.2.1)
     offers.set(offerId, {
-      tenantId, subject, preAuthCode, format, disclosableClaims, schemaSlug, credentialType, issuerDid,
+      tenantId, subject, preAuthCode, format, disclosableClaims, schemaSlug, credentialType, credentialSchema, issuerDid,
       expiresInDays, expirationDate,
       expiresAt: Date.now() + offerTtlMs
     });
@@ -199,6 +201,7 @@ async function handleToken(req, res) {
       tenantId:          entry.tenantId,
       subject:           entry.subject,
       credentialType:    entry.credentialType,
+      credentialSchema:  entry.credentialSchema,
       format:            entry.format,
       disclosableClaims: entry.disclosableClaims,
       issuerDid:         entry.issuerDid,
@@ -282,7 +285,7 @@ async function handleCredential(req, res) {
     // Single-use: remove token
     tokens.delete(accessToken);
 
-    const {tenantId, subject, credentialType, format: credFormat, disclosableClaims} = tokenEntry;
+    const {tenantId, subject, credentialType, credentialSchema, format: credFormat, disclosableClaims} = tokenEntry;
     const {did: issuerDid, assertionKey, identityId} = await getIssuerKeys(tenantId, tokenEntry.issuerDid);
     const expiration = resolveExpiration({expiresInDays: tokenEntry.expiresInDays, expirationDate: tokenEntry.expirationDate});
 
@@ -296,6 +299,7 @@ async function handleCredential(req, res) {
         assertionKey,
         disclosableClaims,
         credentialType,
+        credentialSchema,
         expirationDate:  expiration
       });
       const credentialId = `${baseUrl(req)}/credentials/${uuidv4()}`;
@@ -303,11 +307,11 @@ async function handleCredential(req, res) {
       await pool.query(
         `INSERT INTO credentials
           (credential_id, credential, issuer_did, subject_did, issuance_date, expiration_date,
-           tenant_id, signing_key_did, credential_format, sd_jwt,
+           tenant_id, signing_key_did, credential_format, sd_jwt, schema_id,
            status_list_id, status_list_index)
-         VALUES (?, ?, ?, ?, NOW(), ?, ?, ?, 'sd-jwt', ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, NOW(), ?, ?, ?, 'sd-jwt', ?, ?, ?, ?)`,
         [credentialId, '{}', issuerDid, holderDid, expiration, tenantId, assertionKey.id, sdJwt,
-         statusListId, statusListIndex]
+         credentialSchema?.id ?? null, statusListId, statusListIndex]
       );
       await auditLog('SIGN_VC', {tenantId, identityId, did: issuerDid, actor: 'oid4vci', credentialId});
       console.log(`[Issuer OID4VCI] Issued SD-JWT ${credentialId}`);
@@ -340,7 +344,8 @@ async function handleCredential(req, res) {
       credentialSubject: {
         id: holderDid,
         ...Object.fromEntries(Object.entries(subject).filter(([k]) => k !== 'id'))
-      }
+      },
+      ...(credentialSchema && {credentialSchema})
     };
 
     const suite              = new Ed25519Signature2020({key: assertionKey});
@@ -351,15 +356,16 @@ async function handleCredential(req, res) {
     await pool.query(
       `INSERT INTO credentials
         (credential_id, credential, issuer_did, subject_did, issuance_date, expiration_date,
-         tenant_id, signing_key_did, status_list_id, status_list_index)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         tenant_id, signing_key_did, status_list_id, status_list_index, schema_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         storageId,
         JSON.stringify(verifiableCredential),
         issuerDid, holderDid,
         new Date(credential.issuanceDate), new Date(credential.expirationDate),
         tenantId, assertionKey.id,
-        statusListId, statusListIndex
+        statusListId, statusListIndex,
+        credentialSchema?.id ?? null
       ]
     );
 

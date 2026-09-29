@@ -1744,7 +1744,7 @@ async function listIssuerDids() {
     appendLog('i-dids',`Found ${dids.length} DID(s)`);
     setStatus('i-dids',`${dids.length} DID(s) found.`,'success');
     setResult('i-dids', makeTable(dids.map(d=>[short(d.did,44), d.name??'—'])));
-  } catch(e) { appendLog('i-dids',errMsg(e),'err'); setStatus('i-dids',e.message,'error'); }
+  } catch(e) { appendLog('i-dids',errMsg(e),'err'); setStatus('i-dids',errMsg(e),'error'); }
 }
 function toggleDomainField(prefix) {
   const method = document.getElementById(`${prefix}-did-method`).value;
@@ -1765,7 +1765,7 @@ async function createIssuerDid() {
     setResult('i-dids', makeTable([['DID',r.did],['Name',r.name??name]]));
     STATE.issuerDid = r.did;
     await repopulateIssuerDidPickers();
-  } catch(e) { appendLog('i-dids',errMsg(e),'err'); setStatus('i-dids',e.message,'error'); }
+  } catch(e) { appendLog('i-dids',errMsg(e),'err'); setStatus('i-dids',errMsg(e),'error'); }
 }
 
 async function issueCredential() {
@@ -1803,7 +1803,7 @@ async function issueCredential() {
       document.getElementById('i-revoke-id').value = r.verifiableCredential?.id||'';
     }
     await repopulateCredentialPickers();
-  } catch(e) { appendLog('i-issue',errMsg(e),'err'); setStatus('i-issue',e.message,'error'); }
+  } catch(e) { appendLog('i-issue',errMsg(e),'err'); setStatus('i-issue',errMsg(e),'error'); }
 }
 
 async function revokeCredential() {
@@ -1883,9 +1883,9 @@ async function registerSchema() {
   setStatus('i-schema','Registering…','info');
   try {
     const r = await apiInspect('i-schema','POST',`${ISSUER_URL}/schemas`, {slug, version, schemaJson});
-    setStatus('i-schema','Registered.','success');
+    setStatus('i-schema', r.created === false ? 'Already registered with this exact definition — nothing changed.' : 'Registered.', 'success');
     setResult('i-schema', makeTable([['Schema ID',r.schemaId],['Slug',r.slug],['Version',r.version]]));
-  } catch(e) { appendLog('i-schema',errMsg(e),'err'); setStatus('i-schema',e.message,'error'); }
+  } catch(e) { appendLog('i-schema',errMsg(e),'err'); setStatus('i-schema',errMsg(e),'error'); }
 }
 
 async function getOid4vciMetadata() {
@@ -1930,7 +1930,7 @@ async function createOid4vciOffer() {
       ['Offer URI', `<a href="${r.offerUri}" target="_blank" style="font-size:.7rem">${short(r.offerUri,50)}</a>`],
     ]));
     onOfferCreated(r.credentialOfferUri);
-  } catch(e) { appendLog('i-oid4vci',errMsg(e),'err'); setStatus('i-oid4vci',e.message,'error'); }
+  } catch(e) { appendLog('i-oid4vci',errMsg(e),'err'); setStatus('i-oid4vci',errMsg(e),'error'); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════

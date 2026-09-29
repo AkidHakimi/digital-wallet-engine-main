@@ -9,7 +9,10 @@ import {
   getIssuerDidWebDocument, rotateIssuerKey, revokeIssuerKey, listIssuerKeys
 } from './keys.js';
 import {assignStatusIndex, revokeCredentialStatus, getStatusListVc} from '../shared/status-list.js';
-import {loadSchema, validateCredentialSubject, saveSchema} from '../shared/schema-validator.js';
+import {
+  loadSchema, validateCredentialSubject, saveSchema, SchemaVersionConflictError, withoutBlankValues
+} from '../shared/schema-validator.js';
+import {isValidDidWebDomain} from '../shared/did-web.js';
 import {credentialTypeFor} from '../shared/schema-registry.js';
 import {issueSDJWT} from '../shared/sd-jwt.js';
 import {auditLog} from '../shared/key-store.js';
@@ -86,6 +89,13 @@ export async function createDid(req, res) {
     if (didMethod === 'did:web' && !domain) {
       return res.status(400).json({error: 'domain is required for did:web identities'});
     }
+    if (didMethod === 'did:web' && !isValidDidWebDomain(domain)) {
+      return res.status(400).json({
+        error:   'invalid_domain',
+        details: `"${domain}" is not a valid did:web domain. Use a host name such as "issuer.example.org", ` +
+                 'optionally followed by ":path" segments (e.g. "example.org:issuers:hr").'
+      });
+    }
 
     const result = await createIssuerDid(tenantId, name, {domain, didMethod});
     res.status(201).json(result);
@@ -105,10 +115,10 @@ export async function issueCredential(req, res) {
       schemaSlug = null, schemaVersion = null, credentialType: requestedCredentialType = null,
       expiresInDays = null, expirationDate: requestedExpirationDate = null
     } = req.body;
-    const subject = req.body.subject || req.body.employee;
+    const subject = withoutBlankValues(req.body.subject || req.body.employee);
 
-    if (!holderDid || !subject || !Object.keys(subject).length) {
-      return res.status(400).json({error: 'holderDid and subject data are required'});
+    if (!holderDid || !Object.keys(subject).length) {
+      return res.status(400).json({error: 'holderDid and subject data are required (all subject fields were empty)'});
     }
 
     let expiration;
@@ -126,7 +136,7 @@ export async function issueCredential(req, res) {
     if (schemaSlug) {
       const schemaRow = await loadSchema(tenantId, schemaSlug, schemaVersion);
       const {valid, errors} = validateCredentialSubject(schemaRow, subject);
-      if (!valid) return res.status(400).json({error: 'Schema validation failed', errors});
+      if (!valid) return res.status(400).json({error: 'Schema validation failed', details: errors.join('; '), errors});
 
       const expectedType = credentialTypeFor(schemaRow.slug, schemaRow.schema_json);
       if (credentialType && credentialType !== expectedType) {
@@ -339,9 +349,12 @@ export async function registerSchema(req, res) {
     const tenantId   = req.tenant.id;
     const {slug, version = '1.0.0', schemaJson} = req.body;
     if (!slug || !schemaJson) return res.status(400).json({error: 'slug and schemaJson are required'});
-    const schemaId = await saveSchema(tenantId, slug, version, schemaJson, baseUrl(req));
-    res.status(201).json({schemaId, slug, version, credentialType: credentialTypeFor(slug, schemaJson)});
+    const {schemaId, created} = await saveSchema(tenantId, slug, version, schemaJson, baseUrl(req));
+    res.status(created ? 201 : 200).json({schemaId, slug, version, created, credentialType: credentialTypeFor(slug, schemaJson)});
   } catch (err) {
+    if (err instanceof SchemaVersionConflictError) {
+      return res.status(409).json({error: 'schema_version_exists', details: err.message});
+    }
     res.status(500).json({error: err.message});
   }
 }
@@ -351,8 +364,8 @@ export async function getSchemaBySlug(req, res) {
     const pool  = getPool();
     const {version} = req.query;
     const query  = version
-      ? 'SELECT schema_json FROM credential_schemas WHERE slug = ? AND version = ? ORDER BY created_at DESC LIMIT 1'
-      : 'SELECT schema_json FROM credential_schemas WHERE slug = ? ORDER BY created_at DESC LIMIT 1';
+      ? 'SELECT schema_json FROM credential_schemas WHERE slug = ? AND version = ? ORDER BY id DESC LIMIT 1'
+      : 'SELECT schema_json FROM credential_schemas WHERE slug = ? ORDER BY id DESC LIMIT 1';
     const params = version ? [req.params.slug, version] : [req.params.slug];
     const [rows] = await pool.query(query, params);
     if (rows.length === 0) return res.status(404).json({error: 'Schema not found'});

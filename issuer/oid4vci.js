@@ -11,7 +11,7 @@ import {documentLoader} from '../shared/document-loader.js';
 import {assignStatusIndex} from '../shared/status-list.js';
 import {auditLog} from '../shared/key-store.js';
 import {getPool} from '../shared/db.js';
-import {loadSchema, validateCredentialSubject} from '../shared/schema-validator.js';
+import {loadSchema, validateCredentialSubject, withoutBlankValues} from '../shared/schema-validator.js';
 import {credentialTypeFor} from '../shared/schema-registry.js';
 import {resolveExpiration} from '../shared/expiry.js';
 
@@ -84,10 +84,10 @@ async function handleCreateOffer(req, res) {
       credentialType: requestedCredentialType = null, offerTtlMs = OFFER_TTL_MS, issuerDid = null,
       expiresInDays = null, expirationDate = null
     } = req.body;
-    const subject = req.body.subject || req.body.employee;
+    const subject = withoutBlankValues(req.body.subject || req.body.employee);
 
-    if (!subject || !Object.keys(subject).length) {
-      return res.status(400).json({error: 'subject data is required'});
+    if (!Object.keys(subject).length) {
+      return res.status(400).json({error: 'subject data is required (all subject fields were empty)'});
     }
     if (!['ldp_vc', 'vc+sd-jwt'].includes(format)) {
       return res.status(400).json({error: 'format must be ldp_vc or vc+sd-jwt'});
@@ -99,7 +99,7 @@ async function handleCreateOffer(req, res) {
     if (schemaSlug) {
       const schemaRow = await loadSchema(tenantId, schemaSlug, schemaVersion);
       const {valid, errors} = validateCredentialSubject(schemaRow, subject);
-      if (!valid) return res.status(400).json({error: 'Schema validation failed', errors});
+      if (!valid) return res.status(400).json({error: 'Schema validation failed', details: errors.join('; '), errors});
 
       const expectedType = credentialTypeFor(schemaRow.slug, schemaRow.schema_json);
       if (credentialType && credentialType !== expectedType) {

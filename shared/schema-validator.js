@@ -16,7 +16,7 @@ export async function loadSchema(tenantId, slug, version = null) {
   const pool = getPool();
   const query = version
     ? 'SELECT * FROM credential_schemas WHERE tenant_id = ? AND slug = ? AND version = ? LIMIT 1'
-    : 'SELECT * FROM credential_schemas WHERE tenant_id = ? AND slug = ? ORDER BY created_at DESC LIMIT 1';
+    : 'SELECT * FROM credential_schemas WHERE tenant_id = ? AND slug = ? ORDER BY id DESC LIMIT 1';
   const params = version ? [tenantId, slug, version] : [tenantId, slug];
   const [rows] = await pool.query(query, params);
   if (rows.length === 0) throw new Error(`Schema not found: ${slug}${version ? '@' + version : ''}`);
@@ -55,16 +55,46 @@ export function validateSubjectRaw(schemaJson, subject) {
   };
 }
 
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${canonicalJson(value[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+export class SchemaVersionConflictError extends Error {}
+
+// A published version is immutable: credentials already issued under it rely on
+// its definition. Re-registering the identical definition is a no-op.
+// Returns {schemaId, created}.
 export async function saveSchema(tenantId, slug, version, schemaJson, baseUrl) {
   const pool     = getPool();
   const schemaId = `${baseUrl}/schemas/${slug}`;
+
+  const [existing] = await pool.query(
+    'SELECT schema_json FROM credential_schemas WHERE tenant_id = ? AND slug = ? AND version = ? LIMIT 1',
+    [tenantId, slug, version]
+  );
+  if (existing.length) {
+    const stored = typeof existing[0].schema_json === 'string' ? JSON.parse(existing[0].schema_json) : existing[0].schema_json;
+    if (canonicalJson(stored) === canonicalJson(schemaJson)) return {schemaId, created: false};
+    throw new SchemaVersionConflictError(
+      `Schema "${slug}" version ${version} is already registered with a different definition. ` +
+      'Register the change under a new version number.'
+    );
+  }
+
   await pool.query(
-    `INSERT INTO credential_schemas (tenant_id, slug, schema_id, version, schema_json)
-     VALUES (?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE schema_json = VALUES(schema_json)`,
+    'INSERT INTO credential_schemas (tenant_id, slug, schema_id, version, schema_json) VALUES (?, ?, ?, ?, ?)',
     [tenantId, slug, schemaId, version, JSON.stringify(schemaJson)]
   );
-  // Evict cached validator
-  _schemaCache.delete(cacheKey(tenantId, slug, version));
-  return schemaId;
+  return {schemaId, created: true};
+}
+
+// Drops blank values ('' / whitespace / null) so an unfilled form field counts as
+// "not provided" and the schema's `required` list is actually enforced.
+export function withoutBlankValues(subject) {
+  return Object.fromEntries(Object.entries(subject ?? {}).filter(([, v]) =>
+    v !== null && v !== undefined && !(typeof v === 'string' && v.trim() === '')));
 }

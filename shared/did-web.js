@@ -56,6 +56,15 @@ export async function buildDidWebDocument(domain, keyRows) {
   return doc;
 }
 
+const HOST_LABEL = '[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?';
+const DID_WEB_DOMAIN_RE = new RegExp(`^${HOST_LABEL}(?:\\.${HOST_LABEL})*(?::[A-Za-z0-9._~-]+)*$`);
+
+// The part after "did:web:": a host name, optionally followed by ":path" segments
+// (see didWebToUrl). Rejects characters that cannot appear in a host, such as "@" or "/".
+export function isValidDidWebDomain(domain) {
+  return typeof domain === 'string' && domain.length <= 253 && DID_WEB_DOMAIN_RE.test(domain);
+}
+
 // Converts did:web DID to its HTTPS fetch URL.
 // did:web:example.com        → https://example.com/.well-known/did.json
 // did:web:example.com:a:b    → https://example.com/a/b/did.json

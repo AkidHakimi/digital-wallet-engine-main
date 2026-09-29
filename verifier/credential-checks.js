@@ -47,6 +47,9 @@ function text(value) {
 // Throws RequestConstraintError when they don't tally.
 export async function validateRequestConstraints({credentialType, schemaUrl, requiredClaims}) {
   const claims = normaliseClaims(requiredClaims);
+  if (schemaUrl != null && typeof schemaUrl !== 'string') {
+    reject(400, 'invalid_schema_url', 'schemaUrl must be a URL string');
+  }
   credentialType = text(credentialType);
   schemaUrl      = text(schemaUrl);
 

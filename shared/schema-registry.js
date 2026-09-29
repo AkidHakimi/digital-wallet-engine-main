@@ -22,6 +22,12 @@ export function parseSchemaUrl(url) {
   let u;
   try { u = new URL(url); } catch { return null; }
   if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+  // Must be exactly the published schema URL: no credentials, fragment, trailing
+  // slash, empty segments, or query parameters other than a single ?version=.
+  if (u.username || u.password || url.includes('#')) return null;
+  if (u.pathname.endsWith('/') || u.pathname.includes('//')) return null;
+  const queryKeys = [...u.searchParams.keys()];
+  if (queryKeys.some(k => k !== 'version') || queryKeys.length > 1) return null;
 
   const parts = u.pathname.split('/').filter(Boolean);
   const idx   = parts.lastIndexOf('schemas');
@@ -29,6 +35,7 @@ export function parseSchemaUrl(url) {
   let rest;
   try { rest = parts.slice(idx + 1).map(decodeURIComponent); } catch { return null; }
   if (rest.length < 1 || rest.length > 2) return null;
+  if (rest.length === 2 && queryKeys.length) return null;
 
   const slug    = rest[0];
   const version = rest[1] ?? u.searchParams.get('version') ?? null;

@@ -272,7 +272,7 @@
           <option value="vc-ld">VC-LD</option><option value="sd-jwt">SD-JWT</option>
         </select>
       </div>
-      <div class="fg"><label>Credential Type</label><input id="i-issue-cred-type" placeholder="auto from schema"></div>
+      <div class="fg"><label>Credential Type</label><input id="i-issue-cred-type" placeholder="auto from schema"style="background:#f9fafb"></div>
     </div>
     <div class="form-row" style="margin-bottom:4px">
       <div class="fg fg-wide"><label>Schema Slug</label><input id="i-issue-schema" placeholder="employee-badge"></div>
@@ -2290,21 +2290,46 @@ async function getOid4vpMetadata() {
 }
 async function loadSchemaFields() {
   const {schemas} = await apiGet(`${ISSUER_URL}/schemas`);
+  schemas.sort((a, b) => b.id - a.id); // newest first, same as the verifier for an unversioned URL
   return Promise.all(schemas.map(async s => {
     const json = await apiGet(`${ISSUER_URL}/schemas/${encodeURIComponent(s.slug)}?version=${encodeURIComponent(s.version)}`);
-    return {credentialType: s.credentialType, fields: Object.keys(json?.properties || {})};
+    return {credentialType: s.credentialType, schemaId: s.schema_id, version: s.version,
+            fields: Object.keys(json?.properties || {})};
   }));
 }
 
-// Returns an error message when the claims don't identify exactly one credential type.
+function schemaUrlMatches(url, s) {
+  return url === s.schemaId || url === `${s.schemaId}?version=${s.version}` || url === `${s.schemaId}/${s.version}`;
+}
+
+// Returns an error message when the schema URL / claims don't identify exactly one credential type.
 async function autoFillCredentialType() {
   const el        = document.getElementById('v-oid4vp-cred-type');
   const claims    = document.getElementById('v-oid4vp-req-claims').value.split(',').map(s => s.trim()).filter(Boolean);
   const schemaUrl = document.getElementById('v-oid4vp-schema-url').value.trim();
   el.value = '';
-  if (!claims.length || schemaUrl) return null;
+  if (!claims.length && !schemaUrl) return null;
 
   const schemas = await loadSchemaFields();
+
+  if (schemaUrl) {
+    const target = schemas.find(s => schemaUrlMatches(schemaUrl, s));
+    if (!target) {
+      const valid = [...new Set(schemas.map(s => s.schemaId))].join(', ');
+      const msg = `Schema URL "${schemaUrl}" is not a registered schema. Registered schema URLs: ${valid}`;
+      setStatus('v-oid4vp', msg, 'warn');
+      return msg;
+    }
+    el.value = target.credentialType;
+    const unknown = claims.filter(c => !target.fields.includes(c));
+    if (unknown.length) {
+      const msg = `Claim(s) ${unknown.join(', ')} are not in this schema. Allowed claims: ${target.fields.join(', ')}`;
+      setStatus('v-oid4vp', msg, 'warn');
+      return msg;
+    }
+    setStatus('v-oid4vp', `Schema URL OK: ${target.schemaId} (version ${target.version}) → ${target.credentialType}`, 'info');
+    return null;
+  }
   const types   = [...new Set(schemas.filter(s => claims.every(c => s.fields.includes(c))).map(s => s.credentialType))];
   if (types.length === 1) {
     el.value = types[0];

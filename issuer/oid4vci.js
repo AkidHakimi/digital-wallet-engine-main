@@ -257,10 +257,11 @@ async function handleCredential(req, res) {
 
     // Verify proof JWT  (holder embeds public key in header.jwk)
     const proofJwt = req.body.proof.jwt;
-    let proofPayload;
+    let proofPayload, holderJwk;
     try {
       const header    = decodeProtectedHeader(proofJwt);
       if (!header.jwk) throw new Error('Missing jwk in proof header');
+      holderJwk = header.jwk;
       const publicKey = await importJWK(header.jwk, 'EdDSA');
       const {payload} = await jwtVerify(proofJwt, publicKey, {
         audience:   baseUrl(req),
@@ -296,6 +297,7 @@ async function handleCredential(req, res) {
       const sdJwt = await issueSDJWT({
         claims:          subject,
         holderDid,
+        holderJwk,
         assertionKey,
         disclosableClaims,
         credentialType,

@@ -1,6 +1,7 @@
 import {SignJWT, jwtVerify, importJWK, errors} from 'jose';
 import {randomBytes, createHash} from 'crypto';
 import {base58btc} from 'multiformats/bases/base58';
+import {documentLoader} from './document-loader.js';
 
 // SD-JWT implementation per IETF draft-ietf-oauth-selective-disclosure-jwt.
 //
@@ -52,11 +53,44 @@ export async function keypairToJWK(keyPair) {
   return {privateKey, publicKey, x: Buffer.from(rawPub).toString('base64url')};
 }
 
+function multibaseToJwk(multibase) {
+  const bytes = base58btc.decode(multibase);
+  if (bytes.length !== 34 || bytes[0] !== 0xed || bytes[1] !== 0x01) throw new Error('Only Ed25519 keys are supported');
+  return {kty: 'OKP', crv: 'Ed25519', x: Buffer.from(bytes.slice(2)).toString('base64url')};
+}
+
+// Public JWK for a key id (did#fragment), or for a bare DID the first key listed under `purpose`.
+async function resolveDidJwk(didOrKid, purpose) {
+  const [did, fragment] = didOrKid.split('#');
+  const {document: doc} = await documentLoader(did);
+  const methods = doc.verificationMethod ?? [];
+  let vm;
+  if (fragment) {
+    vm = methods.find(m => m.id === didOrKid || m.id.endsWith('#' + fragment));
+  } else {
+    const ref = (doc[purpose] ?? [])[0];
+    vm = (typeof ref === 'string' ? methods.find(m => m.id === ref) : ref) ?? methods[0];
+  }
+  if (!vm?.publicKeyMultibase) throw new Error(`No usable key found for ${didOrKid}`);
+  return multibaseToJwk(vm.publicKeyMultibase);
+}
+
 // Issues an SD-JWT credential.
+// cnf carries the HOLDER's key (holderJwk, or resolved from holderDid) so the holder
+// can prove possession with a KB-JWT; the issuer key is referenced by the header kid.
 // disclosableClaims: array of claim names the holder can selectively disclose.
 // All other claims are embedded directly in the JWT payload.
-export async function issueSDJWT({claims, holderDid, assertionKey, disclosableClaims = [], credentialSchema = null, credentialType = null, expirationDate}) {
-  const {privateKey, x} = await keypairToJWK(assertionKey);
+export async function issueSDJWT({claims, holderDid, holderJwk = null, assertionKey, disclosableClaims = [], credentialSchema = null, credentialType = null, expirationDate}) {
+  const {privateKey} = await keypairToJWK(assertionKey);
+
+  let cnfJwk = holderJwk;
+  if (!cnfJwk) {
+    try {
+      cnfJwk = await resolveDidJwk(holderDid, 'authentication');
+    } catch (err) {
+      console.warn(`[SD-JWT] Holder key for ${holderDid} not resolvable, issuing without cnf: ${err.message}`);
+    }
+  }
 
   const disclosures = [];
   const sdHashes    = [];
@@ -80,13 +114,13 @@ export async function issueSDJWT({claims, holderDid, assertionKey, disclosableCl
     exp:          Math.floor(expirationDate.getTime() / 1000),
     _sd:          sdHashes,
     _sd_alg:      'sha-256',
-    cnf:          {jwk: {kty: 'OKP', crv: 'Ed25519', x}},
+    ...(cnfJwk && {cnf: {jwk: {kty: cnfJwk.kty, crv: cnfJwk.crv, x: cnfJwk.x}}}),
     ...(credentialType && {vct: credentialType}),
     ...(credentialSchema && {credentialSchema}),
   };
 
   const jwt = await new SignJWT(payload)
-    .setProtectedHeader({alg: 'EdDSA', typ: 'sd+jwt'})
+    .setProtectedHeader({alg: 'EdDSA', typ: 'sd+jwt', kid: assertionKey.id})
     .sign(privateKey);
 
   // Format: JWT~disclosure1~disclosure2~
@@ -118,14 +152,15 @@ export async function verifySDJWT(sdJwt, {issuerDid = null} = {}) {
     const jwt         = parts[0];
     const disclosures = parts.slice(1);
 
-    // Decode header to check alg without verifying yet
+    // The issuer signature is checked against the issuer's DID key (header kid,
+    // else the iss DID) — never against cnf, which is the holder's key.
     const [headerB64, payloadB64] = jwt.split('.');
-    const payload  = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
-    const cnfJwk   = payload?.cnf?.jwk;
+    const header  = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf8'));
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+    if (typeof payload?.iss !== 'string' || !payload.iss.startsWith('did:')) throw new Error('SD-JWT iss must be a DID');
+    if (header.kid && header.kid.split('#')[0] !== payload.iss) throw new Error('SD-JWT kid does not belong to the issuer');
 
-    if (!cnfJwk) throw new Error('SD-JWT missing cnf.jwk');
-
-    const publicKey = await importJWK(cnfJwk, 'EdDSA');
+    const publicKey = await importJWK(await resolveDidJwk(header.kid ?? payload.iss, 'assertionMethod'), 'EdDSA');
     let verified;
     try {
       ({payload: verified} = await jwtVerify(jwt, publicKey, {algorithms: ['EdDSA']}));

@@ -2105,6 +2105,12 @@ async function fetchOid4vpConstraints() {
     const pad = seg.length % 4 ? seg + '='.repeat(4 - seg.length % 4) : seg;
     const payload = JSON.parse(atob(pad.replace(/-/g, '+').replace(/_/g, '/')));
 
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      setStatus('h-oid4vp', `This request expired at ${new Date(payload.exp * 1000).toLocaleTimeString()} ` +
+        '(verifier requests are valid for 10 minutes). Create a new request on the Verifier tab and paste the new URI.', 'error');
+      return;
+    }
+
     const pd = payload.presentation_definition;
     if (!pd) throw new Error('No presentation_definition in request JWT');
 
@@ -2181,6 +2187,17 @@ async function fetchOid4vpConstraints() {
   }
 }
 
+function holderPresentError(e) {
+  const msg = errMsg(e);
+  if (e.data?.error === 'invalid_request_object' && /expired/i.test(msg)) {
+    return 'This request has expired (verifier requests are valid for 10 minutes). Create a new request on the Verifier tab and paste the new URI.';
+  }
+  if (/does not match the credential cnf key/.test(msg)) {
+    return 'This SD-JWT was issued before holder key binding was fixed, so it cannot be presented. Issue a new SD-JWT credential and present that one.';
+  }
+  return msg;
+}
+
 async function initiateOid4vpVcLd() {
   const requestUri  = document.getElementById('h-oid4vp-uri').value.trim();
   const credentialId = document.getElementById('h-oid4vp-cred').value || undefined;
@@ -2193,7 +2210,7 @@ async function initiateOid4vpVcLd() {
     appendLog('h-oid4vp','Submitted state: '+r.state);
     setStatus('h-oid4vp','VP submitted.','success');
     setResult('h-oid4vp', makeTable([['State',r.state],['Holder',short(r.holder)]]));
-  } catch(e) { appendLog('h-oid4vp',errMsg(e),'err'); setStatus('h-oid4vp',e.message,'error'); }
+  } catch(e) { appendLog('h-oid4vp',errMsg(e),'err'); setStatus('h-oid4vp',holderPresentError(e),'error'); }
 }
 async function initiateOid4vpSdJwt() {
   const requestUri    = document.getElementById('h-oid4vp-uri').value.trim();
@@ -2208,7 +2225,7 @@ async function initiateOid4vpSdJwt() {
     appendLog('h-oid4vp','Submitted state: '+r.state+' ('+r.disclosedFields?.length+' fields)');
     setStatus('h-oid4vp','SD-JWT VP submitted.','success');
     setResult('h-oid4vp', makeTable([['State',r.state],['Disclosed',r.disclosedFields?.join(', ')]]));
-  } catch(e) { appendLog('h-oid4vp',errMsg(e),'err'); setStatus('h-oid4vp',e.message,'error'); }
+  } catch(e) { appendLog('h-oid4vp',errMsg(e),'err'); setStatus('h-oid4vp',holderPresentError(e),'error'); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════

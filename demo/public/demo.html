@@ -649,6 +649,43 @@
     </div>
   </div>
 
+  <!-- OID4VP Share via QR (holder-initiated) -->
+  <div class="sc">
+    <div class="sc-title">OID4VP — Share via QR (holder-initiated)</div>
+    <div class="sc-sub">POST /oid4vp/share · GET /oid4vp/share/:id/status · POST /oid4vp/share/:id/consent — the wallet shows a QR, the verifier scans it</div>
+    <div class="sc-grid">
+      <div>
+        <div class="form-row">
+          <div class="fg fg-wide"><label>Credential</label>
+            <select class="cred-picker" id="h-share-cred" onchange="onShareCredChange()">
+              <option value="">— select credential —</option>
+            </select>
+          </div>
+          <div class="fg"><label>Approval</label>
+            <select id="h-share-mode">
+              <option value="confirm">Ask me before sharing</option>
+              <option value="auto">Share automatically (authenticated verifier)</option>
+            </select>
+          </div>
+          <div class="fg"><label>QR valid for (sec)</label><input id="h-share-ttl" type="number" min="30" max="600" placeholder="600"></div>
+        </div>
+        <div id="h-share-sdfields" class="fsel" style="display:none">
+          <div class="fsel-title">Fields the verifier may receive:</div>
+          <div class="fsel-grid" id="h-share-sdgrid"></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-h" onclick="createShareQr()">Create Share QR</button></div>
+        <div id="h-share-consent" style="display:none"></div>
+      </div>
+      <div>
+        <div id="h-share-status" class="sb sb-idle">Ready.</div>
+        <div id="h-share-log" class="alog" style="display:none"></div>
+        <div id="h-share-qr" class="qr-wrap" style="display:none"></div>
+        <div id="h-share-result"></div>
+        <div id="h-share-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
  </div>
 </div><!-- /tab-holder -->
 
@@ -729,6 +766,44 @@
     </div>
 
   </div><!-- /sc-grid -->
+
+  <!-- Scan Holder QR (holder-initiated) -->
+  <div class="sc">
+    <div class="sc-title">OID4VP — Scan Holder QR (holder-initiated)</div>
+    <div class="sc-sub">POST /oid4vp/scan · GET /oid4vp/result/:state — scan the wallet's QR, send it a request, receive the presentation</div>
+    <div class="sc-grid">
+      <div>
+        <div class="fg fg-full" style="margin-bottom:8px">
+          <label>Holder QR content (openid4vp-share://…)</label>
+          <textarea id="v-scan-qr" rows="3" placeholder="Filled automatically when the holder creates a Share QR, or paste the scanned QR text"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label>Credential Type</label><input id="v-scan-cred-type" readonly placeholder="auto from claims" style="background:#f9fafb"></div>
+          <div class="fg"><label>Format</label>
+            <select id="v-scan-format">
+              <option value="">— any —</option>
+              <option value="ldp_vc">ldp_vc (VC-LD)</option>
+              <option value="vc+sd-jwt">vc+sd-jwt (SD-JWT)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="fg fg-wide"><label>Required Claims (comma-separated)</label><input id="v-scan-req-claims" placeholder="fullname, studentid" onchange="autoFillCredentialType('v-scan')"></div>
+          <div class="fg fg-wide"><label>Schema URL (optional)</label><input id="v-scan-schema-url" placeholder="https://…/schemas/…" onchange="autoFillCredentialType('v-scan')"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-v" onclick="scanHolderQr()">Scan &amp; Request</button>
+          <button class="btn btn-v btn-sm" onclick="pollScanResult()">Poll Result</button>
+        </div>
+      </div>
+      <div>
+        <div id="v-scan-status" class="sb sb-idle">Ready.</div>
+        <div id="v-scan-log" class="alog" style="display:none"></div>
+        <div id="v-scan-result"></div>
+        <div id="v-scan-api" class="api-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Verify -->
   <div class="sc">
@@ -1469,8 +1544,12 @@ function toggleOid4vpFields() {
   document.getElementById('h-oid4vp-sdfields').style.display = sd ? 'block' : 'none';
 }
 
-function parseSdJwtFields(sdJwt) {
-  if (!sdJwt) return SD_FIELDS;
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function parseSdJwtFields(sdJwt, fallback = SD_FIELDS) {
+  if (!sdJwt) return fallback;
   try {
     const parts = sdJwt.split('~');
     const fields = parts.slice(1).filter(Boolean).map(d => {
@@ -1483,9 +1562,9 @@ function parseSdJwtFields(sdJwt) {
       } catch {}
       return null;
     }).filter(Boolean);
-    return fields.length ? fields : SD_FIELDS;
+    return fields.length ? fields : fallback;
   } catch {
-    return SD_FIELDS;
+    return fallback;
   }
 }
 
@@ -2238,6 +2317,147 @@ async function initiateOid4vpSdJwt() {
   } catch(e) { appendLog('h-oid4vp',errMsg(e),'err'); setStatus('h-oid4vp',holderPresentError(e),'error'); }
 }
 
+// ══ Holder-initiated share: wallet shows a QR, verifier scans it ═══════════
+const SHARE_TERMINAL = ['submitted', 'rejected', 'failed', 'expired', 'cancelled', 'locked'];
+let shareWatch = null;   // {shareId, format, lastStatus, timer, busy}
+
+function onShareCredChange() {
+  const cred   = STATE.credentialList.find(c => c.id === document.getElementById('h-share-cred').value);
+  const fields = cred?.format === 'sd-jwt' ? parseSdJwtFields(cred.sdJwt, []) : [];
+  if (fields.length) buildFieldSelector('h-share-sdgrid', 'chk-hs', fields);
+  document.getElementById('h-share-sdfields').style.display = fields.length ? 'block' : 'none';
+}
+
+function stopShareWatch() {
+  if (shareWatch?.timer) clearInterval(shareWatch.timer);
+  if (shareWatch) shareWatch.timer = null;
+}
+
+async function createShareQr() {
+  const credentialId = document.getElementById('h-share-cred').value;
+  if (!credentialId) { setStatus('h-share', 'Select the credential you want to share.', 'warn'); return; }
+  const cred = STATE.credentialList.find(c => c.id === credentialId);
+  const body = {credentialId, mode: document.getElementById('h-share-mode').value};
+  const ttl  = parseInt(document.getElementById('h-share-ttl').value, 10);
+  if (ttl > 0) body.ttlSeconds = ttl;
+  if (cred?.format === 'sd-jwt' && document.getElementById('h-share-sdfields').style.display !== 'none') {
+    body.disclosedFields = getSelectedFields('chk-hs');
+    if (!body.disclosedFields.length) { setStatus('h-share', 'Tick at least one field the verifier may receive.', 'warn'); return; }
+  }
+
+  stopShareWatch();
+  document.getElementById('h-share-consent').style.display = 'none';
+  setResult('h-share', '');
+  setStatus('h-share', 'Creating share…', 'info');
+  try {
+    const r = await apiInspect('h-share', 'POST', `${HOLDER_URL}/oid4vp/share`, body);
+    showQr('h-share-qr', r.qrCode);
+    const scanBox = document.getElementById('v-scan-qr');
+    if (scanBox) scanBox.value = r.qrPayload;
+    appendLog('h-share', `Share ${r.shareId} created (${r.mode}), valid until ${new Date(r.expiresAt).toLocaleTimeString()}`);
+    setStatus('h-share', 'QR ready — waiting for a verifier to scan it (Verifier tab → Scan Holder QR).', 'info');
+    setResult('h-share', makeTable([
+      ['Share ID',    r.shareId],
+      ['Valid until', new Date(r.expiresAt).toLocaleTimeString()],
+      ['QR content',  `<code style="font-size:.7rem">${escHtml(r.qrPayload)}</code>`],
+    ]));
+    shareWatch = {shareId: r.shareId, format: r.format, lastStatus: r.status, busy: false,
+                  timer: setInterval(() => pollShare(r.shareId), 2000)};
+  } catch (e) { appendLog('h-share', errMsg(e), 'err'); setStatus('h-share', errMsg(e), 'error'); }
+}
+
+async function pollShare(shareId) {
+  if (!shareWatch || shareWatch.shareId !== shareId || shareWatch.busy) return;
+  shareWatch.busy = true;
+  try {
+    const s = await apiGet(`${HOLDER_URL}/oid4vp/share/${shareId}/status`);
+    if (s.status !== shareWatch.lastStatus) {
+      shareWatch.lastStatus = s.status;
+      onShareStatus(s);
+    }
+    if (SHARE_TERMINAL.includes(s.status)) stopShareWatch();
+  } catch (e) {
+    appendLog('h-share', errMsg(e), 'err');
+    stopShareWatch();
+  } finally {
+    if (shareWatch) shareWatch.busy = false;
+  }
+}
+
+function onShareStatus(s) {
+  const who = s.verifier?.name ?? s.verifier?.clientId ?? 'the verifier';
+  appendLog('h-share', `Status: ${s.status}`, s.status === 'failed' || s.status === 'locked' ? 'err' : 'inf');
+  if (s.status !== 'pending_consent') document.getElementById('h-share-consent').style.display = 'none';
+  switch (s.status) {
+    case 'request_received': setStatus('h-share', `${who} scanned the QR — checking its request…`, 'info'); break;
+    case 'pending_consent':  setStatus('h-share', `${who} is asking for your credential — approve or decline below.`, 'warn'); renderShareConsent(s); break;
+    case 'submitting':       setStatus('h-share', `Sending the presentation to ${who}…`, 'info'); break;
+    case 'submitted': {
+      const fields = s.result?.disclosedFields;
+      setStatus('h-share', `Shared with ${who}` + (Array.isArray(fields) && fields.length ? ` (fields: ${fields.join(', ')})` : '') + '.', 'success');
+      document.getElementById('h-share-qr').style.display = 'none';
+      break;
+    }
+    case 'rejected':  setStatus('h-share', 'You declined the request. Nothing was shared.', 'warn'); break;
+    case 'expired':   setStatus('h-share', s.verifier ? 'The approval window expired. Nothing was shared.' : 'The QR expired before a verifier scanned it. Create a new one.', 'warn'); break;
+    case 'failed':    setStatus('h-share', `Sharing failed: ${s.error?.message ?? 'unknown error'}`, 'error'); break;
+    case 'locked':    setStatus('h-share', 'This QR was locked after too many invalid attempts. Create a new one.', 'error'); break;
+    case 'cancelled': setStatus('h-share', 'Share cancelled.', 'warn'); break;
+  }
+}
+
+function renderShareConsent(s) {
+  const box = document.getElementById('h-share-consent');
+  const v   = s.verifier ?? {};
+  const rq  = s.request ?? {};
+  const badge = v.authenticated
+    ? '<span class="badge bdg-green">identity verified</span>'
+    : `<span class="badge bdg-gray">not verified${v.note ? ' — ' + escHtml(v.note) : ''}</span>`;
+  const cred     = STATE.credentialList.find(c => c.id === s.credentialId);
+  const sdFields = s.format === 'sd-jwt' ? parseSdJwtFields(cred?.sdJwt, []) : [];
+
+  box.innerHTML = `
+    <div class="fsel" style="background:#fffbeb;border-color:#fde68a;margin-top:4px">
+      <div class="fsel-title" style="color:#92400e">Share request</div>
+      ${makeTable([
+        ['Verifier',         `${escHtml(v.name ?? v.clientId)} ${badge}`],
+        ['Verifier ID',      escHtml(short(v.clientId, 60))],
+        ['Asks for',         escHtml((rq.requestedClaims ?? []).join(', ') || '(no specific fields)')],
+        ...(rq.missingClaims?.length ? [['Not pre-approved', escHtml(rq.missingClaims.join(', '))]] : []),
+        ['Answer before',    rq.consentExpiresAt ? new Date(rq.consentExpiresAt).toLocaleTimeString() : '—'],
+      ])}
+      ${s.format === 'sd-jwt' && sdFields.length
+        ? '<div class="fsel-title" style="margin-top:10px">Fields to share:</div><div class="fsel-grid" id="h-share-consent-grid"></div>'
+        : `<div style="font-size:.8rem;margin-top:8px">${s.format === 'vc-ld' ? 'The whole credential (VC-LD) will be shared.' : 'All fields in this credential are always visible.'}</div>`}
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-h" onclick="answerShare(true)">Approve &amp; Share</button>
+        <button class="btn btn-sm" style="background:#f3f4f6;border:1px solid #e5e7eb;color:#374151" onclick="answerShare(false)">Decline</button>
+      </div>
+    </div>`;
+  if (s.format === 'sd-jwt' && sdFields.length) {
+    const proposed = rq.proposedFields ?? [];
+    buildFieldSelector('h-share-consent-grid', 'chk-hsc', sdFields, proposed.length === 0);
+    applyRequiredClaimsToDisclosure('chk-hsc', proposed);
+  }
+  box.style.display = 'block';
+}
+
+async function answerShare(approve) {
+  if (!shareWatch) return;
+  const body = {approve};
+  if (approve && document.getElementById('h-share-consent-grid')) {
+    body.disclosedFields = getSelectedFields('chk-hsc');
+    if (!body.disclosedFields.length) { setStatus('h-share', 'Tick at least one field to share, or decline.', 'warn'); return; }
+  }
+  setStatus('h-share', approve ? 'Sharing…' : 'Declining…', 'info');
+  try {
+    await apiInspect('h-share', 'POST', `${HOLDER_URL}/oid4vp/share/${shareWatch.shareId}/consent`, body);
+    document.getElementById('h-share-consent').style.display = 'none';
+    if (!shareWatch.timer) shareWatch.timer = setInterval(() => pollShare(shareWatch.shareId), 2000);
+    pollShare(shareWatch.shareId);
+  } catch (e) { appendLog('h-share', errMsg(e), 'err'); setStatus('h-share', errMsg(e), 'error'); }
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 // VERIFIER handlers
 // ══════════════════════════════════════════════════════════════════════════
@@ -2330,10 +2550,10 @@ function schemaUrlMatches(url, s) {
 }
 
 // Returns an error message when the schema URL / claims don't identify exactly one credential type.
-async function autoFillCredentialType() {
-  const el        = document.getElementById('v-oid4vp-cred-type');
-  const claims    = document.getElementById('v-oid4vp-req-claims').value.split(',').map(s => s.trim()).filter(Boolean);
-  const schemaUrl = document.getElementById('v-oid4vp-schema-url').value.trim();
+async function autoFillCredentialType(p = 'v-oid4vp') {
+  const el        = document.getElementById(`${p}-cred-type`);
+  const claims    = document.getElementById(`${p}-req-claims`).value.split(',').map(s => s.trim()).filter(Boolean);
+  const schemaUrl = document.getElementById(`${p}-schema-url`).value.trim();
   el.value = '';
   if (!claims.length && !schemaUrl) return null;
 
@@ -2344,29 +2564,29 @@ async function autoFillCredentialType() {
     if (!target) {
       const valid = [...new Set(schemas.map(s => s.schemaId))].join(', ');
       const msg = `Schema URL "${schemaUrl}" is not a registered schema. Registered schema URLs: ${valid}`;
-      setStatus('v-oid4vp', msg, 'warn');
+      setStatus(p, msg, 'warn');
       return msg;
     }
     el.value = target.credentialType;
     const unknown = claims.filter(c => !target.fields.includes(c));
     if (unknown.length) {
       const msg = `Claim(s) ${unknown.join(', ')} are not in this schema. Allowed claims: ${target.fields.join(', ')}`;
-      setStatus('v-oid4vp', msg, 'warn');
+      setStatus(p, msg, 'warn');
       return msg;
     }
-    setStatus('v-oid4vp', `Schema URL OK: ${target.schemaId} (version ${target.version}) → ${target.credentialType}`, 'info');
+    setStatus(p, `Schema URL OK: ${target.schemaId} (version ${target.version}) → ${target.credentialType}`, 'info');
     return null;
   }
   const types   = [...new Set(schemas.filter(s => claims.every(c => s.fields.includes(c))).map(s => s.credentialType))];
   if (types.length === 1) {
     el.value = types[0];
-    setStatus('v-oid4vp', `Credential type read from schema: ${types[0]}`, 'info');
+    setStatus(p, `Credential type read from schema: ${types[0]}`, 'info');
     return null;
   }
   const msg = types.length
     ? `Claims match more than one credential type (${types.join(', ')}). Add a claim that only one of them has, or give a Schema URL.`
     : `No registered schema has all of these claims: ${claims.join(', ')}.`;
-  setStatus('v-oid4vp', msg, 'warn');
+  setStatus(p, msg, 'warn');
   return msg;
 }
 
@@ -2412,6 +2632,88 @@ async function createOid4vpRequest() {
     setStatus('v-oid4vp',errMsg(e) + allowed,'error');
   }
 }
+// ── Holder-initiated: verifier scans the wallet's QR ─────────────────────
+let scanWatch = null;   // {state, timer, deadline}
+
+function stopScanWatch() {
+  if (scanWatch?.timer) clearInterval(scanWatch.timer);
+  scanWatch = null;
+}
+
+async function scanHolderQr() {
+  const qr = document.getElementById('v-scan-qr').value.trim();
+  if (!qr) { setStatus('v-scan', 'Paste the QR content shown by the holder, or create one on the Holder tab (Share via QR).', 'warn'); return; }
+  if (!/^openid4vp-share:\/\//i.test(qr)) {
+    setStatus('v-scan', 'This is not a holder share QR — it should start with openid4vp-share://', 'error'); return;
+  }
+  stopScanWatch();
+  setResult('v-scan', '');
+  setStatus('v-scan', 'Checking request…', 'info');
+  try {
+    const typeError = await autoFillCredentialType('v-scan');
+    if (typeError) { setStatus('v-scan', typeError, 'error'); return; }
+
+    const credentialType   = document.getElementById('v-scan-cred-type').value.trim();
+    const credentialFormat = document.getElementById('v-scan-format').value;
+    const requiredClaims   = document.getElementById('v-scan-req-claims').value.split(',').map(s => s.trim()).filter(Boolean);
+    const schemaUrl        = document.getElementById('v-scan-schema-url').value.trim();
+    const body = {qr};
+    if (credentialType)        body.credentialType   = credentialType;
+    if (credentialFormat)      body.credentialFormat = credentialFormat;
+    if (requiredClaims.length) body.requiredClaims   = requiredClaims;
+    if (schemaUrl)             body.schemaUrl        = schemaUrl;
+
+    setStatus('v-scan', 'Sending the request to the wallet…', 'info');
+    const r = await apiInspect('v-scan', 'POST', `${VERIFIER_URL}/oid4vp/scan`, body);
+    STATE.lastScanState = r.state;
+    appendLog('v-scan', `State ${r.state} — wallet: ${r.walletStatus}`);
+
+    if (r.result) { showScanResult(r.result); return; }
+    const waitSec = r.expiresIn ?? 120;
+    setStatus('v-scan', r.walletStatus === 'pending_consent'
+      ? `Waiting for the holder to approve (up to ${waitSec}s)…`
+      : 'Waiting for the wallet to respond…', 'info');
+    scanWatch = {state: r.state, deadline: Date.now() + (waitSec + 15) * 1000,
+                 timer: setInterval(() => pollScanResult(true), 2000)};
+  } catch (e) {
+    appendLog('v-scan', errMsg(e), 'err');
+    const allowed = e.data?.allowedClaims?.length ? ` Allowed claims: ${e.data.allowedClaims.join(', ')}` : '';
+    setStatus('v-scan', errMsg(e) + allowed, 'error');
+  }
+}
+
+async function pollScanResult(auto = false) {
+  const state = scanWatch?.state ?? STATE.lastScanState;
+  if (!state) { setStatus('v-scan', 'Scan a holder QR first.', 'warn'); return; }
+  try {
+    const r = await apiGet(`${VERIFIER_URL}/oid4vp/result/${state}`);
+    if (r.status === 'pending') {
+      if (auto && scanWatch && Date.now() > scanWatch.deadline) {
+        stopScanWatch();
+        setStatus('v-scan', 'The holder did not respond in time. Ask them to create a new QR.', 'warn');
+      } else if (!auto) {
+        setStatus('v-scan', 'Still waiting for the holder…', 'info');
+      }
+      return;
+    }
+    stopScanWatch();
+    showScanResult(r);
+  } catch (e) {
+    stopScanWatch();
+    appendLog('v-scan', errMsg(e), 'err');
+    setStatus('v-scan', errMsg(e), 'error');
+  }
+}
+
+function showScanResult(r) {
+  if (r.verified) {
+    setStatus('v-scan', 'VERIFIED ✓' + (r.trustWarning ? ` — ${r.trustWarning}` : ''), r.trustWarning ? 'warn' : 'success');
+  } else {
+    setStatus('v-scan', `FAILED: ${r.errorDescription ?? r.error ?? 'unknown error'}`, 'error');
+  }
+  renderVerifyResult('v-scan-result', r);
+}
+
 async function pollOid4vpResult() {
   const state = document.getElementById('v-oid4vp-state').value.trim();
   if (!state) { setStatus('v-oid4vp','Enter a state value.','warn'); return; }
